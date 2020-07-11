@@ -1,0 +1,147 @@
+# Conditional pipeline
+# https://raw.githubusercontent.com/MicrosoftDocs/pipelines-multistage/master/conditional.yml
+
+# Set Variables
+variables:
+  - group: M365-environment-variables
+
+# Set Name
+name: $(BuildDefinitionName)_$(BuildID)_$(Date:yyyyMMdd)$(Rev:.rr)
+
+# Only run against master
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
+    exclude:
+    - refs/tags/*
+  paths:
+    exclude:
+    - releases/*
+
+# Don't run against PRs
+pr: none
+
+# Follow Stages
+stages:
+- stage: build_CI
+  jobs:
+  - job: build_CI
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+    - script: |
+        echo hello world from %MyName%
+        echo Agent.HomeDirectory is %CD%
+      workingDirectory: $(Agent.HomeDirectory)
+      env:
+        MyName: $(Agent.MachineName)
+      condition: and(succeeded(), eq(variables['agent.os'], 'windows_nt'))
+      displayName: Greeting from Windows machine
+    - script: |
+        echo hello world from $MyName
+        echo Agent.HomeDirectory is $PWD
+      workingDirectory: $(Agent.HomeDirectory)
+      env:
+        MyName: $(Agent.MachineName)
+      condition: and(succeeded(), in(variables['agent.os'], 'darwin', 'linux'))
+      displayName: Greeting from macOS or Linux machine
+    - powershell: |
+        Write-Host "Hello from PowerShell v$($PSVersionTable.PSVersion.Major)"
+      workingDirectory: $(Agent.HomeDirectory)
+      displayName: Greeting from Powershell
+    - task: PowerShell@1
+      displayName: 'Install PnP Powershell module for SharePoint Online'
+      inputs:
+        scriptType: inlineScript
+        inlineScript: |
+          Install-PackageProvider -Name NuGet -Force -Scope "CurrentUser"
+          Install-Module SharePointPnPPowerShellOnline -Scope "CurrentUser" -RequiredVersion 3.3.1811.0 -Verbose -AllowClobber -Force
+    - publish: $(System.DefaultWorkingDirectory)
+      artifact: drop
+
+- stage: deploy_TEST
+  variables:
+  - group: M365-TEST-environment-variables
+  dependsOn: build_CI
+  condition: and(succeeded(), eq(variables['RELEASE'], 1))
+  jobs:
+  - job: deploy_TEST
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+    - powershell: |
+        Install-PackageProvider -Name NuGet -Force -Scope "CurrentUser"
+        Install-Module SharePointPnPPowerShellOnline -Scope "CurrentUser" -RequiredVersion 3.15.1911.0 -AllowClobber -SkipPublisherCheck -Verbose -Force
+        [System.Environment]::SetEnvironmentVariable('DSTCREDS_PASSWORD','$(DSTCREDS_PASSWORD)',[System.EnvironmentVariableTarget]::User)
+      errorActionPreference: silentlyContinue
+      displayName: 'Install Modules'
+    - download: current
+      artifact: drop
+    - task: PowerShell@2
+      displayName: 'Run Deploy Script'
+      inputs:
+        targetType: filePath
+        filePath: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment/Test-Deployment.ps1'
+        errorActionPreference: silentlyContinue
+        workingDirectory: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment'
+
+- stage: deploy_PROD
+  variables:
+  - group: M365-PROD-environment-variables
+  dependsOn:
+  - deploy_TEST
+  jobs:
+  - deployment: deploy_PROD
+    pool:
+      vmImage: 'windows-latest'
+    environment: 'microsoft-365'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - powershell: |
+              Install-PackageProvider -Name NuGet -Force -Scope "CurrentUser"
+              Install-Module SharePointPnPPowerShellOnline -Scope "CurrentUser" -RequiredVersion 3.15.1911.0 -AllowClobber -SkipPublisherCheck -Verbose -Force
+              [System.Environment]::SetEnvironmentVariable('DSTCREDS_PASSWORD','$(DSTCREDS_PASSWORD)',[System.EnvironmentVariableTarget]::User)
+            errorActionPreference: silentlyContinue
+            displayName: 'Install Modules'
+          - download: current
+            artifact: drop
+          - task: PowerShell@2
+            displayName: 'Run Deploy Script'
+            inputs:
+              targetType: filePath
+              filePath: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment/Test-Deployment.ps1'
+              errorActionPreference: silentlyContinue
+              workingDirectory: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment'
+          - task: git-tag-on-release-task@9
+            displayName: 'Tag Artifacts'
+            inputs:
+              searchRegex: '(microsoft-365)_([0-9]+)_([0-9]+.[0-9]+)'
+              replacePattern: 'Release-$1-v$2.b$3'
+          - task: XplatGenerateReleaseNotes@3
+            displayName: 'Generate Release Notes'
+            inputs:
+              outputfile: '$(Pipeline.Workspace)\releasenotes.md'
+              templateLocation: 'File'
+              templatefile: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment/release-notes-template.hbs'
+              checkStage: true
+              dumpPayloadToConsole: true
+              dumpPayloadToFile: false
+              replaceFile: true
+              getParentsAndChildren: false
+          - task: WikiUpdaterTask@1
+            displayName: 'Add Release Notes to Wiki'
+            inputs:
+              repo: 'dev.azure.com/[ORGANIZATION]/[PROJECT]/_git/[PROJECT].wiki'
+              filename: 'Microsoft-365\Release-Notes-$(Build.BuildId).md'
+              replaceFile: true
+              dataIsFile: true
+              sourceFile: '$(Pipeline.Workspace)\releasenotes.md'
+              message: 'Release notes created by pipeline process'
+              gitname: '$(Build.RequestedFor)'
+              gitemail: '$(Build.RequestedForEmail)'
+              useAgentToken: true
+              localpath: '$(Pipeline.Workspace)\repo'

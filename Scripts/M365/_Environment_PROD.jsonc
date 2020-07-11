@@ -1,0 +1,20 @@
+{
+  "environmentMain": {
+    "customerName": "MyClient", //used as parameter {{Name}} in 'environmentMisc' section
+    "customerPrefix": "MC", //Max 4 characters!, used as parameter {{Prefix}} in 'environmentMisc' section
+    "customerO365TenantPrefix": "myclient" //used as parameter {{O365TenantPrefix}} in 'environmentMisc' section
+  },
+  "environmentMisc": {
+    "tenantAdminUrl": "https://{{O365TenantPrefix}}-admin.sharepoint.com",
+    "tenantUrl": "https://{{O365TenantPrefix}}.sharepoint.com",
+    "credentialTarget": "myclient-prod" // make sure you have this credential in the Windows Credential Manager
+  },
+  "siteSettings": [
+    {
+      "name": "Root",
+      "spurlTarget": "https://{{O365TenantPrefix}}.sharepoint.com",
+      "siteTitle": "{{Name}} Intranet",
+      "siteDescription": "{{Name}} Intranet"
+    }
+  ]
+}
