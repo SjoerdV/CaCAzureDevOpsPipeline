@@ -9,8 +9,6 @@ abstract: |
   This document is about starting your own Configuration as Code repository for Microsoft 365 projects.
 permalink: /index.html
 ---
-# Configuration as Code - Azure DevOps Pipeline for Microsoft 365 - Starter
-
 [![Github All Releases](https://img.shields.io/github/downloads/SjoerdV/ConvertOneNote2MarkDown/total.svg)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/releases)
 
 ## Summary
