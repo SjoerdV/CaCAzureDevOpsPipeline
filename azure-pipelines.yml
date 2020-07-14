@@ -1,4 +1,4 @@
-# Conditional pipeline
+# Conditional Azure DevOps YAML pipeline
 # https://raw.githubusercontent.com/MicrosoftDocs/pipelines-multistage/master/conditional.yml
 
 # Set Variables
@@ -131,7 +131,7 @@ stages:
               dumpPayloadToConsole: true
               dumpPayloadToFile: false
               replaceFile: true
-              getParentsAndChildren: false
+              getParentsAndChildren: true
           - task: WikiUpdaterTask@1
             displayName: 'Add Release Notes to Wiki'
             inputs:
