@@ -9,7 +9,7 @@ abstract: |
   This document is about starting your own Configuration as Code repository for Microsoft 365 projects.
 permalink: /index.html
 ---
-[![Github All Releases](https://img.shields.io/github/downloads/SjoerdV/ConvertOneNote2MarkDown/total.svg)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/releases)
+[![GitHub All Releases](https://img.shields.io/github/downloads/SjoerdV/ConvertOneNote2MarkDown/total.svg)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/releases)
 
 ## Configuration as Code - Azure DevOps Pipeline for Microsoft 365 - Starter
 
@@ -30,9 +30,9 @@ None
   * 1 [Tag\Branch Git on Release](https://marketplace.visualstudio.com/items?itemName=jabbera.git-tag-on-release-task&targetId=1984fc0e-1ed4-4122-8e14-c4622047929a&utm_source=vstsproduct&utm_medium=ExtHubManageList)
   * 2 [Generate Release Notes (Crossplatform)](https://marketplace.visualstudio.com/items?itemName=richardfennellBM.BM-VSTS-XplatGenerateReleaseNotes&targetId=1984fc0e-1ed4-4122-8e14-c4622047929a&utm_source=vstsproduct&utm_medium=ExtHubManageList)
   * 3 [WIKI Updater Tasks](https://marketplace.visualstudio.com/items?itemName=richardfennellBM.BM-VSTS-WIKIUpdater-Tasks&targetId=1984fc0e-1ed4-4122-8e14-c4622047929a&utm_source=vstsproduct&utm_medium=ExtHubManageList)
-* If the included Powershell scripts need to be run locally:
-  * Only Windows 7+ with WMI 5.1 is supported (Prefer Windows 10)
-  * [PnP Powershell](https://github.com/pnp/PnP-PowerShell#installation) module needs to be installed
+* If the included PowerShell scripts need to be run locally:
+  * Only Windows 7+ with WMI 5.1 and .NET Framework 4.6.1+ is supported (Prefer Windows 10)
+  * [PnP PowerShell](https://github.com/pnp/PnP-PowerShell#installation) module needs to be installed
 
 ### Installation
 
@@ -47,7 +47,7 @@ None
     ![Approval Configuration](assets/images/2020-07-12-00-57-39.png)
 1. Add the necessary **Variable Groups** to the Pipeline **Library** settings. Call them '**M365-environment-variables**', '**M365-PROD-environment-variables**' and '**M365-TEST-environment-variables**'.:
   ![Add Variable Groups](assets/images/2020-07-11-22-42-51.png)
-1. Create the **Variables** as shown inputting the service account credentials of your Microsoft 365 environment suitable for creating a Powershell connection to SharePoint Online. If you don't have a separate PROD and TEST environments (not recommended!) just duplicate the values. Usually an account with the SharePoint Admin role would suffice. The Password variable should be made of type 'secret'. Alternatively you could link secrets from an Azure Key vault.
+1. Create the **Variables** as shown inputting the service account credentials of your Microsoft 365 environment suitable for creating a PowerShell connection to SharePoint Online. If you don't have a separate PROD and TEST environments (not recommended!) just duplicate the values. Usually an account with the SharePoint Admin role would suffice. The Password variable should be made of type 'secret'. Alternatively you could link secrets from an Azure Key vault.
     1. ![Add M365-environment-variables](assets/images/2020-07-11-22-54-02.png)
     1. ![Add M365-PROD-environment-variables](assets/images/2020-07-11-22-58-58.png)
     1. ![Add M365-TEST-environment-variables](assets/images/2020-07-11-22-59-36.png)
@@ -64,7 +64,7 @@ None
 
 #### Test the Build and Publish stage (build_CI)
 
-Please note as we are just running existing Powershell scripts later on, there is nothing to be compiled or processed. Of course the build artefact containing the contents of the repository is important as it will be tagged as a release.
+Please note as we are just running existing PowerShell scripts later on, there is nothing to be compiled or processed. Of course the build artefact containing the contents of the repository is important as it will be tagged as a release.
 
 1. Make sure the 'RELEASE' variable in the 'M365-environment-variables' group is set to '0' (don't forget to save!)
     | **RELEASE** = | 0 |
@@ -95,12 +95,12 @@ Please note as we are just running existing Powershell scripts later on, there i
 
 #### Update, Expand and Add your own files
 
-Use the given folder structure to add your own files and adding them to a 'powershell task' in the yaml pipeline. You can expand on the given, fairly generic and expandable structure.
+Use the given folder structure to add your own files and adding them to a 'PowerShell task' in the YAML pipeline. You can expand on the given, fairly generic and expandable structure.
 
 ### Troubleshooting
 
-Start troubleshooting by setting the `System.debug` variable in the pipeline to `true` and re-run the pipeline.
-  ![Pipeline Debug Setting](assets/images/2020-07-11-23-28-43.png)
+When you have issues with the extensions mentioned and configured in the pipeline start troubleshooting by setting the `System.debug` variable in the pipeline to `true` and re-run the pipeline.
+![Pipeline Debug Setting](assets/images/2020-07-11-23-28-43.png)
 
 ### Results
 
