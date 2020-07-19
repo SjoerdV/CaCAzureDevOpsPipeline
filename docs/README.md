@@ -15,9 +15,12 @@ permalink: /index.html
 
 ### Summary
 
-This repo brings you an expandable scaffold for continuously deploying your Microsoft 365 SaaS Configuration with a basic 'conditional' multi stage yaml pipeline for Azure Pipelines. The pipeline uses a manual Approval step, before creating a release. This pipeline simply automates a connection to SharePoint Online and can than be expanded upon.
+This repo brings you an expandable scaffold for continuously deploying your Microsoft 365 SaaS Configuration with a basic 'conditional' multi stage YAML pipeline for Azure Pipelines. The pipeline uses a manual Approval step, before creating a release. This pipeline simply automates a connection to SharePoint Online and can than be expanded upon.
 
-To keep things simple git branching is not being used, all commit/push actions should take place on the 'master' branch. Adapt this solution accordingly.
+To keep things simple:
+
+1. Git branching is not being used, all commit/push actions should take place on the 'master' branch. Adapt this solution accordingly.
+1. The credentials used for connecting to SharePoint Online are of the username/password method, but can be replaced with the 'App Only' method which is recommended for production usage. Also have a look at the [2020-07: Upcoming PnP PowerShell developments and recommendations](https://www.spdevalk.nl/blog/post-pnp-powershell-developments/) post I wrote on what to expect concerning PnP PowerShell and the use of App Only authentication methods.
 
 ### Known Issues
 
