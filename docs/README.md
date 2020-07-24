@@ -3,7 +3,7 @@ title:  'Configuration as Code - Azure DevOps Pipeline for Microsoft 365 - Start
 author:
 - Sjoerd de Valk, SPdeValk Consultancy
 date: 2020-07-11T14:05:00+02:00
-last_modified_at: 2020-07-11T14:05:00+02:00
+last_modified_at: 2020-07-24T20:30:00+02:00
 keywords: [azure, devops, pipeline, yaml, microsoft365]
 abstract: |
   This document is about starting your own Configuration as Code repository for Microsoft 365 projects.
