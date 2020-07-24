@@ -51,13 +51,6 @@ stages:
         Write-Host "Hello from PowerShell v$($PSVersionTable.PSVersion.Major)"
       workingDirectory: $(Agent.HomeDirectory)
       displayName: Greeting from Powershell
-    - task: PowerShell@1
-      displayName: 'Install PnP Powershell module for SharePoint Online'
-      inputs:
-        scriptType: inlineScript
-        inlineScript: |
-          Install-PackageProvider -Name NuGet -Force -Scope "CurrentUser"
-          Install-Module SharePointPnPPowerShellOnline -Scope "CurrentUser" -RequiredVersion 3.3.1811.0 -Verbose -AllowClobber -Force
     - publish: $(System.DefaultWorkingDirectory)
       artifact: drop
 
@@ -65,49 +58,46 @@ stages:
   variables:
   - group: M365-TEST-environment-variables
   dependsOn: build_CI
-  condition: and(succeeded(), eq(variables['RELEASE'], 1))
+  condition: and(succeeded(), eq(variables['TEST'], 1))
   jobs:
-  - job: deploy_TEST
+  - deployment: deploy_TEST
     pool:
       vmImage: 'windows-latest'
-    steps:
-    - powershell: |
-        Install-PackageProvider -Name NuGet -Force -Scope "CurrentUser"
-        Install-Module SharePointPnPPowerShellOnline -Scope "CurrentUser" -RequiredVersion 3.15.1911.0 -AllowClobber -SkipPublisherCheck -Verbose -Force
-        [System.Environment]::SetEnvironmentVariable('DSTCREDS_PASSWORD','$(DSTCREDS_PASSWORD)',[System.EnvironmentVariableTarget]::User)
-      errorActionPreference: silentlyContinue
-      displayName: 'Install Modules'
-    - download: current
-      artifact: drop
-    - task: PowerShell@2
-      displayName: 'Run Deploy Script'
-      inputs:
-        targetType: filePath
-        filePath: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment/Test-Deployment.ps1'
-        errorActionPreference: silentlyContinue
-        workingDirectory: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment'
-
-- stage: deploy_PROD
-  variables:
-  - group: M365-PROD-environment-variables
-  dependsOn:
-  - deploy_TEST
-  jobs:
-  - deployment: deploy_PROD
-    pool:
-      vmImage: 'windows-latest'
-    environment: 'microsoft-365'
+    environment: 'microsoft-365-TEST'
     strategy:
       runOnce:
         deploy:
           steps:
-          - powershell: |
-              Install-PackageProvider -Name NuGet -Force -Scope "CurrentUser"
-              Install-Module SharePointPnPPowerShellOnline -Scope "CurrentUser" -RequiredVersion 3.15.1911.0 -AllowClobber -SkipPublisherCheck -Verbose -Force
-              [System.Environment]::SetEnvironmentVariable('DSTCREDS_PASSWORD','$(DSTCREDS_PASSWORD)',[System.EnvironmentVariableTarget]::User)
-            errorActionPreference: silentlyContinue
+          - task: PowerShell@2
             displayName: 'Install Modules'
+            inputs:
+              targetType: 'inline'
+              script: |
+                Install-PackageProvider -Name NuGet -Scope CurrentUser -Force -ForceBootstrap
+                Install-Module -Name Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser -SkipPublisherCheck -Verbose -Force
+                Install-Module -Name SharePointPnPPowerShellOnline -Scope CurrentUser -RequiredVersion 3.23.2007.1 -AllowClobber -SkipPublisherCheck -Force -Verbose
+              errorActionPreference: 'silentlyContinue'
+          - task: DownloadSecureFile@1 # Download a secure file to the agent machine
+            displayName: 'Download Certificate'
+            name: mycert # The name with which to reference the secure file's path on the agent, like $(mySecureFile.secureFilePath)
+            inputs:
+              secureFile: "[ORGANIZATION PREFIX]-[CLIENTID]-[ENVIRONMENT].pfx" # The file name or GUID of the secure file
+            condition: ne(variables['DSTCREDS_PFXPASS'], '')
+            env:
+              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
+          - task: PowerShell@2
+            displayName: 'Import Certificate'
+            inputs:
+              targetType: 'inline'
+              script: |
+                $Pwd = ConvertTo-SecureString -String $env:DSTCREDS_PFXPASS -Force -AsPlainText
+                $Thumbprint = (Import-PfxCertificate -CertStoreLocation Cert:\CurrentUser\My -FilePath $(mycert.secureFilePath) -Password $Pwd).Thumbprint
+              errorActionPreference: 'silentlyContinue'
+            condition: ne(variables['DSTCREDS_PFXPASS'], '')
+            env:
+              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
           - download: current
+            displayName: 'Download Artifact'
             artifact: drop
           - task: PowerShell@2
             displayName: 'Run Deploy Script'
@@ -116,6 +106,67 @@ stages:
               filePath: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment/Test-Deployment.ps1'
               errorActionPreference: silentlyContinue
               workingDirectory: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment'
+            env:
+              DSTCREDS_PASSWORD: $(DSTCREDS_PASSWORD) # Maps the secret variable $(DSTCREDS_PASSWORD) from 'M365-TEST-environment-variables' group
+              DSTCREDS_THUMB: $(DSTCREDS_THUMB) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
+              DSTCREDS_SECRET: $(DSTCREDS_SECRET) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
+
+- stage: deploy_PROD
+  variables:
+  - group: M365-PROD-environment-variables
+  dependsOn: deploy_TEST
+  condition: and(succeeded(), eq(variables['RELEASE'], 1))
+  jobs:
+  - deployment: deploy_PROD
+    pool:
+      vmImage: 'windows-latest'
+    environment: 'microsoft-365-PROD'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: PowerShell@2
+            displayName: 'Install Modules'
+            inputs:
+              targetType: 'inline'
+              script: |
+                Install-PackageProvider -Name NuGet -Scope CurrentUser -Force -ForceBootstrap
+                Install-Module -Name Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser -SkipPublisherCheck -Verbose -Force
+                Install-Module -Name SharePointPnPPowerShellOnline -Scope CurrentUser -RequiredVersion 3.23.2007.1 -AllowClobber -SkipPublisherCheck -Force -Verbose
+              errorActionPreference: 'silentlyContinue'
+          - task: DownloadSecureFile@1 # Download a secure file to the agent machine
+            displayName: 'Download Certificate'
+            name: mycert # The name with which to reference the secure file's path on the agent, like $(mySecureFile.secureFilePath)
+            inputs:
+              secureFile: "[ORGANIZATION PREFIX]-[CLIENTID]-[ENVIRONMENT].pfx" # The file name or GUID of the secure file
+            condition: ne(variables['DSTCREDS_PFXPASS'], '')
+            env:
+              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
+          - task: PowerShell@2
+            displayName: 'Import Certificate'
+            inputs:
+              targetType: 'inline'
+              script: |
+                $Pwd = ConvertTo-SecureString -String $env:DSTCREDS_PFXPASS -Force -AsPlainText
+                $Thumbprint = (Import-PfxCertificate -CertStoreLocation Cert:\CurrentUser\My -FilePath $(mycert.secureFilePath) -Password $Pwd).Thumbprint
+              errorActionPreference: 'silentlyContinue'
+            condition: ne(variables['DSTCREDS_PFXPASS'], '')
+            env:
+              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
+          - download: current
+            displayName: 'Download Artifact'
+            artifact: drop
+          - task: PowerShell@2
+            displayName: 'Run Deploy Script'
+            inputs:
+              targetType: filePath
+              filePath: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment/Test-Deployment.ps1'
+              errorActionPreference: silentlyContinue
+              workingDirectory: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment'
+            env:
+              DSTCREDS_PASSWORD: $(DSTCREDS_PASSWORD) # Maps the secret variable $(DSTCREDS_PASSWORD) from 'M365-TEST-environment-variables' group
+              DSTCREDS_THUMB: $(DSTCREDS_THUMB) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
+              DSTCREDS_SECRET: $(DSTCREDS_SECRET) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
           - task: git-tag-on-release-task@9
             displayName: 'Tag Artifacts'
             inputs:

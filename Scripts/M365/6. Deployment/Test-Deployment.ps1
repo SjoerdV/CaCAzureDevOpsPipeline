@@ -32,9 +32,6 @@ $O365ScriptRootLevel = "..\"
 $RepoRootLevel = "$O365ScriptRootLevel..\..\"
 . "$($O365ScriptRootLevel)PnP-EnvironmentFunctions.ps1"
 
-#Set TraceLog Mode
-Set-PnPTraceLog -Off
-
 ## Load Environment
 Set-Environment $Environment "$($O365ScriptRootLevel)" "Root"
 
@@ -47,4 +44,4 @@ Set-Environment $Environment "$($O365ScriptRootLevel)" "Root"
 # Configure Site Collection
 
 ## Connect to SharePoint Online
-Connect-SharePointOnline
+Connect-PnPSpo $global:serviceConnectionMethod.PnPSpo

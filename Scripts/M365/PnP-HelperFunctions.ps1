@@ -13,5 +13,5 @@ Load this script file as follows: . .\PnP-HelperFunctions.ps1
 
 # Import Modules
 If (!(Get-module SharePointPnPPowerShellOnline)) {
-  Import-Module SharePointPnPPowerShellOnline -Scope "Local"
+  Import-Module SharePointPnPPowerShellOnline -Scope "Local" -DisableNameChecking -ErrorAction SilentlyContinue
 }
