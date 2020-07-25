@@ -50,13 +50,13 @@ function Set-Environment($Environment, $Path, $Site){
   | ConvertFrom-Json).siteSettings | Where-Object { $_.name -eq $Site}
 
   # Set all Service Connection Authentication parameters
-  [hashtable]$global:serviceConnectionMethod = @{}
-  foreach ($service in $global:jsonenvironmentMisc.serviceAuthenticationSchemes.perService) {
+  [hashtable]$global:ServiceConnectionMethod = @{}
+  foreach ($service in $global:jsonenvironmentMisc.ServiceAuthenticationSchemes.perService) {
     if ($service.authenticationScheme) {
-      $global:serviceConnectionMethod += @{$service.serviceName = $service.authenticationScheme}
+      $global:ServiceConnectionMethod += @{$service.serviceName = $service.authenticationScheme}
     }
     else {
-      $global:serviceConnectionMethod += @{$service.serviceName = $global:jsonenvironmentMisc.serviceAuthenticationSchemes.default}
+      $global:ServiceConnectionMethod += @{$service.serviceName = $global:jsonenvironmentMisc.ServiceAuthenticationSchemes.default}
     }
   }
 

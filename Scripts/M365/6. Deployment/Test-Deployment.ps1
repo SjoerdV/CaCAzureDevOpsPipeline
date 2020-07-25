@@ -44,4 +44,4 @@ Set-Environment $Environment "$($O365ScriptRootLevel)" "Root"
 # Configure Site Collection
 
 ## Connect to SharePoint Online
-Connect-PnPSpo $global:serviceConnectionMethod.PnPSpo
+Connect-PnPSpo $global:ServiceConnectionMethod.PnPSpo

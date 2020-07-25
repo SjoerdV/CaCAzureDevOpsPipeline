@@ -42,6 +42,9 @@ None
 * If the included PowerShell scripts need to be run locally:
   * Only Windows 7+ with WMI 5.1 and .NET Framework 4.6.1+ is supported (Prefer Windows 10)
   * [PnP PowerShell](https://github.com/pnp/PnP-PowerShell#installation) module needs to be installed
+  * [Azure AD Preview](https://www.powershellgallery.com/packages/AzureADPreview/2.0.2.105) module needs to be installed
+* If you intend to use the 'Cert' method for authenticating:
+  * Make sure you have access to an account with the 'Global Administrator' role as we will need it consent.
 
 ### Installation
 
@@ -57,7 +60,7 @@ None
 
 Decide if you want to connect to SharePoint Online using the **'Cred'** (username/password) option OR the **'Cert'** App-Only method (recommended).
 
-No matter if you intend to use *only* the **'Cred'** method of authenticating to SharePoint Online it is required to obtain the credentials for an account with the SharePoint Administrator role and add those as the **Generic Windows Credential** you specified as a value for the `environmentMisc.credentialTarget` key above.
+No matter if you intend to use *only* the **'Cred'** method of authenticating to SharePoint Online (for which you will need an account with the SharePoint Administrator role) it is required to add the Cloud Administrator or Application Administrator roles to this account and add those as the **Generic Windows Credential** you specified as a value for the `environmentMisc.credentialTarget` key above. We need this **initially** to be able to create an App Principle. You can later remove these roles. The App itself will need 'admin consent' for the entire organization. Global (Company) Administrator role privileges are required for this step.
 
 ![Windows Credential Manager / Windows Credentials](assets/images/2020-07-12-00-38-03.png)
 ![Add a Generic Credential](assets/images/2020-07-12-00-42-43.png)
@@ -72,11 +75,13 @@ For 'Cred' use only you are now done. Continue on for 'Cert' use.
 
 If you intend to use the **'Cert'** method you need to generate an App Principle with the right API permissions granted AND a certificate for use with the Principle.
 
-> **Important:** Do not forget to add the referenced Generic Windows Credential specified as the value of the `environmentMisc.credentialTarget` key to the Windows Credential Manager Store as shown in the previous paragraph.
+> **Important:** Do not forget to add the referenced Generic Windows Credential specified as the value of the `environmentMisc.credentialTarget` key to the Windows Credential Manager Store as shown in the previous paragraph, and assign these credentials the right role as stipulated.
 
 Please run the script `Scripts\M365\1. Prerequisites\Install-AzureADAppPrinciples.ps1` on a local machine for each environment and follow onscreen instructions exactly.
 
 > **Important:** After running the script you have now obtained the CLIENTID, SECRET, THUMB, PFXPASS variables and a PFX certificate file stored here: `Scripts\M365\[OrgPrefix]-[ClientId]-[Environment].pfx`. **Store Safely!**
+
+> **Important:** Make sure you have a Global Administrator 'admin consent' the App for your organization.
 
 Now find or add the Generic Credential in the Windows Credential Manager which will contain the App Principle details.
 
@@ -86,7 +91,7 @@ Now find or add the Generic Credential in the Windows Credential Manager which w
 
 ![Add Generic Credential for App Principle](assets/images/2020-07-24-19-14-01.png)
 
-> **Note:** The 'Password' for the Credential is indeed the concatenated value of the **ApplicationCertThumb** value and the **ApplicationSecret** value with a pipe character in between.
+> **Note:** The 'Password' for the Credential is indeed the concatenated value of the **ApplicationCertThumb** value and the **ApplicationSecret** value with a pipe (i.e. '|') character in between.
 
 You are now ready to run the script `Scripts\M365\6. Deployment\Test-Deployment.ps1` locally. Try it out by traversing to the directory containing the script file in your PowerShell prompt.:
 
@@ -129,7 +134,7 @@ You are now ready to run the script `Scripts\M365\6. Deployment\Test-Deployment.
 
 Please note as we are just running existing PowerShell scripts later on, there is nothing to be compiled or processed. Of course the build artefact containing the contents of the repository is important as it will be tagged as a release.
 
-1. Make sure both 'TEST' abd 'RELEASE' variables in the 'M365-environment-variables' group is set to '0' (don't forget to save!)
+1. Make sure both 'TEST' and 'RELEASE' variables in the 'M365-environment-variables' group are set to '0' (don't forget to save!)
     | **TEST**    = | **0**  |
     | ------------- | ------ |
     | **RELEASE** = | **0**  |
@@ -148,7 +153,7 @@ Please note as we are just running existing PowerShell scripts later on, there i
 1. If everything is properly setup there should be an 'Approval' waiting for the person(s) you have configured the TEST environment for.
 1. Finish the approval round
 1. The 'deploy_TEST' stage will now commence and should finish successfully
-    1. Check that the SharePoint Connection is actually established: in the 'Run Deploy Script' step it should say 'Connected to Web Target URL: <https://[yourtenant].sharepoint.com>'
+    1. Check that the SharePoint Connection is actually established: in the 'Run Deploy Script' step it should say '`Connected to Web Target URL: <https://[yourtenant].sharepoint.com>`'
 
 #### Test the PROD stage (deploy_PROD)
 
@@ -160,13 +165,13 @@ Please note as we are just running existing PowerShell scripts later on, there i
 1. If everything is properly setup there should be an 'Approval' waiting for the person(s) you have configured the PROD environment for.
 1. Finish the approval round
 1. The 'deploy_PROD' stage will now commence where the important steps occur by means of the following extension actions:
-    1. Check that the SharePoint Connection is actually established: in the 'Run Deploy Script' step it should say 'Connected to Web Target URL: <https://[yourtenant].sharepoint.com>'
+    1. Check that the SharePoint Connection is actually established: in the 'Run Deploy Script' step it should say '`Connected to Web Target URL: <https://[yourtenant].sharepoint.com>`'
     1. 'Tag Artifacts'
-        * create a tag for the release artifact for easy searching
+        * create a tag for the release artifact for easy searching. You can find the tag with the release artifacts in the 'Azure DevOps Project / Repos / Tags' section
     1. 'Generate Release Notes'
         * create a markdown file with changes since the last release
     1. 'Add Release Notes to Wiki'
-        * add the markdown file to the project's wiki
+        * add the generated markdown file to the project's wiki located in the 'Azure DevOps Project / Overview / Wiki' section
 1. If any errors occur, please try and fix them or contact the authors as those extension are updated regularly so mileage may vary. Review the [Troubleshooting](#Troubleshooting) section for more information.
 
 #### Update, Expand and Add your own files
@@ -184,7 +189,8 @@ You should now have a working continuous integration pipeline running with the a
 
 ### Recommendations
 
-Have Fun!
+1. Add additional pipeline automation with the [Guest User Lifecycle Management Tool](GULM-README.md).
+1. Have Fun!
 
 ### Changelog
 
