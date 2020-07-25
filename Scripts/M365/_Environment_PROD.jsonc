@@ -9,13 +9,13 @@
     "tenantAdminUrl": "https://{{O365TenantPrefix}}-admin.sharepoint.com",
     "tenantUrl": "https://{{O365TenantPrefix}}.sharepoint.com",
     "credentialTarget": "myclient-p", // fill in the name of the Generic Windows Credential you want to use containing credentials of a SharePoint Administrator
-    "credentialGraphTarget": "myclient-graph-p", // fill in the name of the Generic Windows Credential you want to use containing credentials of an App Principle that you have generated with the script 'Scripts\M365\1. Prerequisites\Install-AzureADAppPrinciples.ps1'
-    "AzureAppsAndPrinciples" : [
+    "credentialGraphTarget": "myclient-graph-p", // fill in the name of the Generic Windows Credential you want to use containing credentials of an App Principal that you have generated with the script 'Scripts\M365\1. Prerequisites\Install-AzureADAppPrincipals.ps1'
+    "AzureAppsAndPrincipals" : [
       {
         "AppName": "PnP PowerShell App",
         "AppSettings": {
           "AvailableToOtherTenants": false,
-          "AuthenticationScheme": "Certificate", // Options are 'Secret' or 'Certificate', where 'Secret' will just create a Secret for the App Principle while 'Certificate' will also create a pfx file.
+          "AuthenticationScheme": "Certificate", // Options are 'Secret' or 'Certificate', where 'Secret' will just create a Secret for the App Principal while 'Certificate' will also create a pfx file.
           "RequiredResourceAccess": [ // Do not change or alter the structure of this part, as it is important to maintain as is. You may of course change the values or add elements
             {
               "ResourceAppId": "00000003-0000-0000-c000-000000000000", // MS Graph API
@@ -50,6 +50,15 @@
                   "Type": "Role"
                 }
               ]
+            },
+            {
+              "ResourceAppId": "00000002-0000-0ff1-ce00-000000000000", // Exchange Online API
+              "ResourceAccess": [
+                {
+                  "Id": "dc50a0fb-09a3-484d-be87-e023b12c6440", // Application: Exchange.ManageAsApp
+                  "Type": "Role"
+                }
+              ]
             }
           ],
           "ServicePrincipal": [
@@ -81,6 +90,11 @@
         {
           "serviceName":"Aad",
           "authenticationScheme": "" // if other than default
+        },
+        {
+          "serviceName":"Exo", // Legacy Module 'V1', can not use Certificate App Authentication and/or unattended scenario
+          "authenticationScheme": "", // if other than default
+          "authenticationSchemeVersion": "V2" // Can be 'V1' or 'V2' // if other than default
         }
       ]
     }

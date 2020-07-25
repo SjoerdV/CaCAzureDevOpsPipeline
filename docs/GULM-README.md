@@ -15,7 +15,9 @@ permalink: /gulm.html
 
 This document is about managing Microsoft 365 Azure B2B Guest Users using a Azure DevOps YAML pipeline.
 
-This document will give manual instructions on adding prerequisite assets to your Microsoft Cloud environment which you can convert to scripted instructions and place in your forked (or another of your choosing) Configuration-as-Code repository.
+This document will give **manual** instructions on adding prerequisite assets (SharePoint and Flow) to your Microsoft Cloud environment which you can convert to scripted instructions and place in your forked (or another of your choosing) Configuration-as-Code repository.
+
+The aim for this project is to present the structure for *managing* the lifecycle of guests and to provide a working scheduled YAML pipeline. not to provide a production ready 'working' product.
 
 ### Known Issues
 
