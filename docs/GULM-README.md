@@ -30,4 +30,4 @@ None
   * [Azure AD Preview](https://www.powershellgallery.com/packages/AzureADPreview/2.0.2.105) module needs to be installed
   * [Exchange Online PowerShell V2](https://docs.microsoft.com/en-us/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps#install-and-maintain-the-exchange-online-powershell-v2-module) module needs to be installed  
 * If you intend to use the 'Cert' method for authenticating:
-  * Make sure you have [previously executed](index.html#add-certificates-and-credentials) the procedure for using the repository and pipeline in your own solution
+  * Make sure you have [previously executed](README.md#add-certificates-and-credentials) the procedure for using the repository and pipeline in your own solution
