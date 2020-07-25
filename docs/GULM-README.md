@@ -36,7 +36,7 @@ None
 
 You could create a custom app with some sort of database that will allow to store expired accounts and add a way to reactivate them by a Guest Inviter.
 
-I choose to have SharePoint Online set up to do exactly that.
+I choose to have implement a combination of a SharePoint Online List and a Power Automate Flow to do exactly that.
 
 #### Add SharePoint artifacts and permissions
 
@@ -68,9 +68,46 @@ Update the 3 empty 'placeholder' functions in `Scripts\M365\PnP-HelperFunctions.
 1. `Get-GuestReactivationsFromSharePointList`
 1. `Remove-GuestFromSharePointList`
 
-Tip: to connect to SharePoint-Online use the built-in function `Connect-PnPSpo $global:ServiceConnectionMethod.PnPSpo`
-{: .notice--success}
+> **Tip:** to connect to SharePoint-Online use the built-in function call
+>
+> ```powershell
+> $global:siteUrlTarget = "$($global:jsonenvironmentMisc.tenantUrl)/sites/[yoursite]"
+> Connect-PnPSpo $global:ServiceConnectionMethod.PnPSpo
+>
+> ```
 
-### Execute
+#### Execute Locally
 
-If you followed instructions from 
+If you followed instructions you should now be able to execute the script locally.
+
+#### Add additional pipeline
+
+The primary 'Continuous Integration' pipeline is probably already configured in your Azure DevOps configuration and it is required to have these [correct steps configured](README.md#adjust-azure-devops-settings).
+
+1. A [scheduled YAML pipeline](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/scheduled-triggers?view=azure-devops&tabs=yaml) is available in the project root called `azure-pipelines-guestlifecyclemanagement.yml`.
+1. You can add this additional pipeline referencing the provided YAML file by following [these](https://sethreid.co.nz/using-multiple-yaml-build-definitions-azure-devops/) steps.
+1. As a final step add another Pipeline **Environment** called 'microsoft-365-GUML'.
+
+Now the pipeline is ready to be executed.
+
+### Usage
+
+#### Test the PROD stage (deploy_PROD)
+
+1. Manually kick off the pipeline (or wait for the next scheduled start)
+1. The 'deploy_PROD' stage will now commence where the important steps occur by means of the following extension actions:
+    1. Check that the main script is correctly executed by reviewing the 'Run Deploy Script' step.
+1. If any errors occur, please try and fix them or create an issue in the repository mentioning 'Guest User Lifecycle Management'. Review the [Troubleshooting](#troubleshooting) section for more information.
+
+### Troubleshooting
+
+When you have issues with the the pipeline start troubleshooting by setting the `System.debug` variable in the pipeline to `true` and re-run the pipeline.
+![Pipeline Debug Setting](assets/images/2020-07-11-23-28-43.png)
+
+### Results
+
+You should now have a working scheduled pipeline running with the added bonus of a managed Guest User Lifecycle Management solution.
+
+### Recommendations
+
+1. Have Fun!

@@ -26,7 +26,7 @@ To keep things simple:
 
 Also have a look at the [2020-07: Upcoming PnP PowerShell developments and recommendations](https://www.spdevalk.nl/blog/post-pnp-powershell-developments/) post I wrote on what to expect concerning PnP PowerShell and the use of App Only authentication methods.
 
-The steps of generating an App Principle for App-Only operations on SharePoint Online has been inspired by [Cyberdrain](https://www.cyberdrain.com/connect-to-exchange-online-automated-when-mfa-is-enabled-using-the-secureapp-model/) (amongst others).
+The steps of generating an App Principal for App-Only operations on SharePoint Online has been inspired by [Cyberdrain](https://www.cyberdrain.com/connect-to-exchange-online-automated-when-mfa-is-enabled-using-the-secureapp-model/) (amongst others).
 
 ### Known Issues
 
@@ -60,7 +60,7 @@ None
 
 Decide if you want to connect to SharePoint Online using the **'Cred'** (username/password) option OR the **'Cert'** App-Only method (recommended).
 
-No matter if you intend to use *only* the **'Cred'** method of authenticating to SharePoint Online (for which you will need an account with the SharePoint Administrator role) it is required to add the Cloud Administrator or Application Administrator roles to this account and add those as the **Generic Windows Credential** you specified as a value for the `environmentMisc.credentialTarget` key above. We need this **initially** to be able to create an App Principle. You can later remove these roles. The App itself will need 'admin consent' for the entire organization. Global (Company) Administrator role privileges are required for this step.
+No matter if you intend to use *only* the **'Cred'** method of authenticating to SharePoint Online (for which you will need an account with the SharePoint Administrator role) it is required to add the Cloud Administrator or Application Administrator roles to this account and add those as the **Generic Windows Credential** you specified as a value for the `environmentMisc.credentialTarget` key above. We need this **initially** to be able to create an App Principal. You can later remove these roles. The App itself will need 'admin consent' for the entire organization. Global (Company) Administrator role privileges are required for this step.
 
 ![Windows Credential Manager / Windows Credentials](assets/images/2020-07-12-00-38-03.png)
 ![Add a Generic Credential](assets/images/2020-07-12-00-42-43.png)
@@ -73,23 +73,23 @@ No matter if you intend to use *only* the **'Cred'** method of authenticating to
 
 For 'Cred' use only you are now done. Continue on for 'Cert' use.
 
-If you intend to use the **'Cert'** method you need to generate an App Principle with the right API permissions granted AND a certificate for use with the Principle.
+If you intend to use the **'Cert'** method you need to generate an App Principal with the right API permissions granted AND a certificate for use with the Principal.
 
 > **Important:** Do not forget to add the referenced Generic Windows Credential specified as the value of the `environmentMisc.credentialTarget` key to the Windows Credential Manager Store as shown in the previous paragraph, and assign these credentials the right role as stipulated.
 
-Please run the script `Scripts\M365\1. Prerequisites\Install-AzureADAppPrinciples.ps1` on a local machine for each environment and follow onscreen instructions exactly.
+Please run the script `Scripts\M365\1. Prerequisites\Install-AzureADAppPrincipals.ps1` on a local machine for each environment and follow onscreen instructions exactly.
 
 > **Important:** After running the script you have now obtained the CLIENTID, SECRET, THUMB, PFXPASS variables and a PFX certificate file stored here: `Scripts\M365\[OrgPrefix]-[ClientId]-[Environment].pfx`. **Store Safely!**
 
 > **Important:** Make sure you have a Global Administrator 'admin consent' the App for your organization.
 
-Now find or add the Generic Credential in the Windows Credential Manager which will contain the App Principle details.
+Now find or add the Generic Credential in the Windows Credential Manager which will contain the App Principal details.
 
 1. Internet or network address: [value specified for key `environmentMisc.credentialGraphTarget` in jsonc file]
 1. User name: CLIENTID
 1. Password: THUMB|SECRET
 
-![Add Generic Credential for App Principle](assets/images/2020-07-24-19-14-01.png)
+![Add Generic Credential for App Principal](assets/images/2020-07-24-19-14-01.png)
 
 > **Note:** The 'Password' for the Credential is indeed the concatenated value of the **ApplicationCertThumb** value and the **ApplicationSecret** value with a pipe (i.e. '|') character in between.
 
@@ -100,7 +100,7 @@ You are now ready to run the script `Scripts\M365\6. Deployment\Test-Deployment.
 
 #### Adjust Azure DevOps settings
 
-1. Install the extensions mentioned in [Requirements](#Requirements) in your Azure DevOps organization
+1. Install the extensions mentioned in [Requirements](#requirements) in your Azure DevOps organization
 1. Make sure your Project Build account has 'Contribute' permissions to the Project Wiki.
     ![Build account permissions](assets/images/2020-07-11-22-33-53.png)
 1. Add two Pipeline **Environments** called 'microsoft-365-TEST' and 'microsoft-365-PROD'
@@ -207,7 +207,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Certificate authentication option to service connect possibilities
 * Azure AD connection functions
-* Automatic App Principle installation with secret, thumbprint and PFX export for certificate authentication.
+* Automatic App Principal installation with secret, thumbprint and PFX export for certificate authentication.
 
 ##### Changed
 
