@@ -4,13 +4,13 @@
 By: Sjoerd de Valk, SP de Valk Consultancy, 2020
 .DESCRIPTION
 
-This script will add required app principles and local certificates for connecting to various API's like the Microsoft Graph and add these principles to Agent Groups if required
+This script will add required app Principals and local certificates for connecting to various API's like the Microsoft Graph and add these Principals to Agent Groups if required
 .PARAMETER Environment
 
 Specify the environment this script will run for
 .EXAMPLE
 
-Run this script file as follows: .\Install-AzureADAppPrinciples.ps1 -Environment "TEST"
+Run this script file as follows: .\Install-AzureADAppPrincipals.ps1 -Environment "TEST"
 #>
 #Get Parameters
 [CmdletBinding()]
@@ -61,10 +61,10 @@ class root {
 }
 
 
-# Add App Principles
+# Add App Principals
 $SessionInfo = Get-AzureADCurrentSessionInfo
 
-$appdefinitions = $global:jsonenvironmentMisc.AzureAppsAndPrinciples
+$appdefinitions = $global:jsonenvironmentMisc.AzureAppsAndPrincipals
 foreach ($appdefinition in $appdefinitions) {
   $secret = $null
   $certthumb = $null
@@ -91,7 +91,7 @@ foreach ($appdefinition in $appdefinitions) {
     }
   }
   else {
-    Write-Host "App Principle already exist. Updating..."
+    Write-Host "App Principal already exist. Updating..."
     if ($appdefinition.AppSettings.AuthenticationScheme -ne "Secret") {
       $Confirm = Read-Host "You are updating the app with id '$($app.AppId)'. Do you wish to generate a new certificate (Y/N)?"
       if($Confirm -match "[y]") {
