@@ -189,7 +189,7 @@ You should now have a working continuous integration pipeline running with the a
 
 ### Recommendations
 
-1. Add additional pipeline automation with the [Guest User Lifecycle Management Tool](GULM-README.md).
+1. Add additional pipeline automation with the [Guest User Life Cycle Management Tool](GULM-README.md).
 1. Have Fun!
 
 ### Changelog

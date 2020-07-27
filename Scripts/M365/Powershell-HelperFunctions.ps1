@@ -30,3 +30,30 @@ function New-AppSelfsignedCertificate([object]$app) {
   $secret = New-AzureADApplicationKeyCredential -ObjectId $app.ObjectId -CustomKeyIdentifier "MySecret" -StartDate $currentDate -EndDate $endDate -Type AsymmetricX509Cert -Usage Verify -Value $keyValue
   return @{"CertThumb" = $thumb; "PfxPassword" = $pwdplain}
 }
+
+
+function Send-Report([string[]]$mailto, [string]$subject, [string]$body, [string]$file) {
+  try {
+    write-logfile "Sending email"
+    $params = @{}
+    $params['From'] = "$($global:dstCred.UserName)"
+    $params['To'] = $mailto
+    $params['Body'] = $body
+    $params['Subject'] = $subject
+    if ($file.Length -gt 0) {
+      $params['Attachments'] = $file
+    }
+    Send-MailMessage `
+      @params `
+      -BodyAsHtml `
+      -Credential $global:dstCred `
+      -UseSSl `
+      -Port '587' `
+      -SmtpServer 'smtp.office365.com' `
+      -EA Stop
+  }
+  catch {
+    write-logfile "Error sending email: $($Error[0].ToString())" "Red"
+    return
+  }
+}

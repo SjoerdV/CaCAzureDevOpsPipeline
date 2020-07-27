@@ -1,0 +1,94 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+# Set Variables
+variables:
+  - group: M365-environment-variables
+
+# Set Name
+name: $(BuildDefinitionName)_$(BuildID)_$(Date:yyyyMMdd)$(Rev:.rr)
+
+# Don't run against master
+trigger: none
+
+# Don't run against PRs
+pr: none
+
+# Run from schedule
+schedules:
+- cron: "0 6 * * Mon-Fri"
+  displayName: M-F 8:00 AM (UTC+2)
+  branches:
+    include:
+    - master
+    exclude:
+    - refs/tags/*
+
+stages:
+- stage: build_CI
+  jobs:
+  - job: build_CI
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+    - publish: $(System.DefaultWorkingDirectory)
+      artifact: drop
+
+- stage: deploy_PROD
+  variables:
+  - group: M365-PROD-environment-variables
+  jobs:
+  - deployment: deploy_PROD
+    pool:
+      vmImage: 'windows-latest'
+    environment: 'microsoft-365-GULM'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: PowerShell@2
+            displayName: 'Install Modules'
+            inputs:
+              targetType: 'inline'
+              script: |
+                Install-PackageProvider -Name NuGet -Scope CurrentUser -Force -ForceBootstrap
+                Install-Module -Name Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser -SkipPublisherCheck -Verbose -Force
+                Install-Module -Name SharePointPnPPowerShellOnline -Scope CurrentUser -RequiredVersion 3.23.2007.1 -AllowClobber -SkipPublisherCheck -Force -Verbose
+                Install-Module -Name AzureADPreview -Scope "CurrentUser" -SkipPublisherCheck -Verbose -Force
+                Install-Module -Name ExchangeOnlineManagement -AllowPrerelease -Scope "CurrentUser" -MinimumVersion 2.0.3-Preview -Verbose -Force
+              errorActionPreference: 'silentlyContinue'
+          - task: DownloadSecureFile@1 # Download a secure file to the agent machine
+            displayName: 'Download Certificate'
+            name: mycert # The name with which to reference the secure file's path on the agent, like $(mySecureFile.secureFilePath)
+            inputs:
+              secureFile: fhq-a4dc3538-a0cd-41c9-8905-81522564f979-PROD.pfx # The file name or GUID of the secure file
+            condition: ne(variables['DSTCREDS_PFXPASS'], '')
+            env:
+              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group
+          - task: PowerShell@2
+            displayName: 'Import Certificate'
+            inputs:
+              targetType: 'inline'
+              script: |
+                $Pwd = ConvertTo-SecureString -String $env:DSTCREDS_PFXPASS -Force -AsPlainText
+                $Thumbprint = (Import-PfxCertificate -CertStoreLocation Cert:\CurrentUser\My -FilePath $(mycert.secureFilePath) -Password $Pwd).Thumbprint
+              errorActionPreference: 'silentlyContinue'
+            condition: ne(variables['DSTCREDS_PFXPASS'], '')
+            env:
+              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group
+          - download: current
+            displayName: 'Download Artifact'
+            artifact: drop
+          - task: PowerShell@2
+            displayName: 'Run Deploy Script'
+            inputs:
+              targetType: filePath
+              filePath: '$(Pipeline.Workspace)/drop/Scripts/O365/3. Governance/_GuestUserLifeCycleManagement/Apply-GuestUserLifeCycle.ps1'
+              errorActionPreference: silentlyContinue
+              workingDirectory: '$(Pipeline.Workspace)/drop/Scripts/O365/3. Governance/_GuestUserLifeCycleManagement'
+            env:
+              DSTCREDS_PASSWORD: $(DSTCREDS_PASSWORD) # Maps the secret variable $(DSTCREDS_PASSWORD) from 'M365-PROD-environment-variables' group
+              DSTCREDS_THUMB: $(DSTCREDS_THUMB) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group
+              DSTCREDS_SECRET: $(DSTCREDS_SECRET) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group

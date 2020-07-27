@@ -15,3 +15,18 @@ Load this script file as follows: . .\PnP-HelperFunctions.ps1
 If (!(Get-module SharePointPnPPowerShellOnline)) {
   Import-Module SharePointPnPPowerShellOnline -Scope "Local" -DisableNameChecking -ErrorAction SilentlyContinue
 }
+
+# Import Functions
+function Add-GuestExpirationToSharePointList([string]$GuestUpn) {
+  Write-Host "Not implemented"
+}
+
+
+function Get-GuestReactivationsFromSharePointList() {
+  Write-Host "Not implemented"
+}
+
+
+function Remove-GuestFromSharePointList([string]$GuestUpn) {
+  Write-Host "Not implemented"
+}

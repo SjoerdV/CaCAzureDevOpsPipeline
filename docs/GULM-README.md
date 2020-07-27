@@ -1,5 +1,5 @@
 ---
-title: 'Guest User LifeCycle Management Tool'
+title: 'Guest User Life Cycle Management Tool'
 author:
 - Sjoerd de Valk, SPdeValk Consultancy
 date: 2020-07-25T16:00:00+02:00
@@ -9,7 +9,7 @@ abstract: |
   This document is about managing Microsoft 365 Azure B2B Guest Users using a Azure DevOps YAML pipeline.
 permalink: /gulm.html
 ---
-## Guest User LifeCycle Management Tool
+## Guest User Life Cycle Management Tool
 
 ### Summary
 
@@ -17,7 +17,7 @@ This document is about managing Microsoft 365 Azure B2B Guest Users using a Azur
 
 This document will give **manual** instructions on adding prerequisite assets (SharePoint and Flow) to your Microsoft Cloud environment which you can convert to scripted instructions and place in your forked (or another of your choosing) Configuration-as-Code repository.
 
-The aim for this project is to present the structure for *managing* the lifecycle of guests and to provide a working scheduled YAML pipeline. not to provide a production ready 'working' product.
+The aim for this project is to present the structure for *managing* the life cycle of guests and to provide a working scheduled YAML pipeline. not to provide a production ready 'working' product.
 
 ### Known Issues
 
@@ -99,7 +99,7 @@ Now the pipeline is ready to be executed.
 1. Manually kick off the pipeline (or wait for the next scheduled start)
 1. The 'deploy_PROD' stage will now commence where the important steps occur by means of the following extension actions:
     1. Check that the main script is correctly executed by reviewing the 'Run Deploy Script' step.
-1. If any errors occur, please try and fix them or create an issue in the repository mentioning 'Guest User Lifecycle Management'. Review the [Troubleshooting](#troubleshooting) section for more information.
+1. If any errors occur, please try and fix them or create an issue in the repository mentioning 'Guest User Life Cycle Management'. Review the [Troubleshooting](#troubleshooting) section for more information.
 
 ### Troubleshooting
 
@@ -108,7 +108,7 @@ When you have issues with the the pipeline start troubleshooting by setting the 
 
 ### Results
 
-You should now have a working scheduled pipeline running with the added bonus of a managed Guest User Lifecycle Management solution.
+You should now have a working scheduled pipeline running with the added bonus of a managed Guest User Life Cycle Management solution.
 
 ### Recommendations
 
