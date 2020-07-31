@@ -25,6 +25,7 @@ schedules:
     - master
     exclude:
     - refs/tags/*
+  always: true
 
 stages:
 - stage: build_CI

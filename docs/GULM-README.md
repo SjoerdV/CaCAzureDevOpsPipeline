@@ -3,7 +3,7 @@ title: 'Guest User Life Cycle Management Tool'
 author:
 - Sjoerd de Valk, SPdeValk Consultancy
 date: 2020-07-25T16:00:00+02:00
-last_modified_at: 2020-07-25T16:00:00+02:00
+last_modified_at: 2020-07-27T13:00:00+02:00
 keywords: [azure, devops, pipeline, yaml, microsoft365]
 abstract: |
   This document is about managing Microsoft 365 Azure B2B Guest Users using a Azure DevOps YAML pipeline.
