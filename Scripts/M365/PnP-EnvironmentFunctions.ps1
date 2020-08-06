@@ -52,12 +52,23 @@ function Set-Environment($Environment, $Path, $Site){
   # Set all Service Connection Authentication parameters
   [hashtable]$global:ServiceConnectionMethod = @{}
   foreach ($service in $global:jsonenvironmentMisc.ServiceAuthenticationSchemes.perService) {
+    [hashtable]$ServiceConnectionProperties = @{}
+    # Set the Authentication Scheme Type Properties
     if ($service.authenticationScheme) {
-      $global:ServiceConnectionMethod += @{$service.serviceName = $service.authenticationScheme}
+      $ServiceConnectionProperties += @{"AuthSchemeType" = $service.authenticationScheme}
     }
     else {
-      $global:ServiceConnectionMethod += @{$service.serviceName = $global:jsonenvironmentMisc.ServiceAuthenticationSchemes.default}
+      $ServiceConnectionProperties += @{"AuthSchemeType" = $global:jsonenvironmentMisc.ServiceAuthenticationSchemes.default}
     }
+    # Set the Authentication Scheme Version Properties
+    if ($service.authenticationSchemeVersion) {
+      $ServiceConnectionProperties += @{"AuthSchemeVersion" = $service.authenticationSchemeVersion}
+    }
+    else {
+      $ServiceConnectionProperties += @{"AuthSchemeVersion" = ""}
+    }
+    # Add the full Service Authentication Scheme
+    $global:ServiceConnectionMethod += @{$service.serviceName = $ServiceConnectionProperties}
   }
 
   # Fetch Credentials
@@ -105,7 +116,7 @@ function Set-CredentialTargets () {
 }
 
 
-function Connect-PnPSpo([string]$type) {
+function Connect-PnPSpo([object]$properties) {
   if ($global:relativeWebTarget -ne "") {
     $siteurl = "$($global:siteUrlTarget)/$($global:relativeWebTarget)"
   }
@@ -124,7 +135,7 @@ function Connect-PnPSpo([string]$type) {
   #endregion DisconnectPnPOnline
   #region ConnectPnPOnline
   try {
-    switch ($type) {
+    switch ($properties.AuthSchemeType) {
       "Cred" {
         Write-Host "Connecting to site $siteurl as $($global:dstCred.UserName)" -ForegroundColor "Green"
         Connect-PnPOnline -Url $siteurl -Credentials $global:dstCred -SkipTenantAdminCheck -IgnoreSslErrors -RetryCount 3 -RetryWait 5 -NoTelemetry -WarningAction SilentlyContinue -ErrorAction Stop

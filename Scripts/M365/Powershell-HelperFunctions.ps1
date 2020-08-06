@@ -34,7 +34,7 @@ function New-AppSelfsignedCertificate([object]$app) {
 
 function Send-Report([string[]]$mailto, [string]$subject, [string]$body, [string]$file) {
   try {
-    write-logfile "Sending email"
+    Write-Host "Sending email"
     $params = @{}
     $params['From'] = "$($global:dstCred.UserName)"
     $params['To'] = $mailto
@@ -53,7 +53,7 @@ function Send-Report([string[]]$mailto, [string]$subject, [string]$body, [string
       -EA Stop
   }
   catch {
-    write-logfile "Error sending email: $($Error[0].ToString())" "Red"
+    Write-Host "Error sending email: $($Error[0].ToString())" -ForegroundColor "Red"
     return
   }
 }

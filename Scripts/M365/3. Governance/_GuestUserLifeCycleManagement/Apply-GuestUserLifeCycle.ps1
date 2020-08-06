@@ -47,7 +47,7 @@ Connect-Aad $global:ServiceConnectionMethod.Aad
 
 
 # Connect to Exchange Online
-Connect-Exo $global:ServiceConnectionMethod.Exo "$(($global:jsonenvironmentMisc.ServiceAuthenticationSchemes.perService | Where-Object {$_.serviceName -eq 'Exo'}).authenticationSchemeVersion)"
+Connect-Exo $global:ServiceConnectionMethod.Exo
 
 
 # Set Variables Processing

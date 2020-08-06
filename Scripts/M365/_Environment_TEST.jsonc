@@ -91,6 +91,11 @@
         {
           "serviceName":"Aad",
           "authenticationScheme": "" // if other than default
+        },
+        {
+          "serviceName":"Exo", // Legacy Module 'V1', can not use Certificate App Authentication and/or unattended scenario
+          "authenticationScheme": "", // if other than default
+          "authenticationSchemeVersion": "V2" // Can be 'V1' or 'V2' // if other than default
         }
       ]
     }

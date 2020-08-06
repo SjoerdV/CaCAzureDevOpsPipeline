@@ -17,9 +17,9 @@ If (!(Get-module AzureADPreview)) {
 }
 
 
-function Connect-Aad([string]$type) {
+function Connect-Aad([object]$properties) {
   try {
-    switch ($type) {
+    switch ($properties.AuthSchemeType) {
       "Cred" {
         Write-Host "Connecting to Azure Active Directory as $($global:dstcred.UserName)" -ForegroundColor "Green"
         $aad = Connect-AzureAD -Credential $global:dstCred -TenantId $global:jsonenvironmentMain.customerO365GroupsAcceptedEmailDomain -ErrorAction Stop
