@@ -24,7 +24,7 @@ function Set-Environment($Environment, $Path, $Site){
 
 	# Set variables
   # NOTE: Stripping comments by the first two replace rows is not needed in Powershell 6+
-  $jsonenvironmentFull = Get-Content -Raw -Path "$($Path)_Environment_$($Environment).jsonc"
+  $jsonenvironmentFull = Get-Content -Raw -LiteralPath "$($Path)_Environment_$($Environment).jsonc"
 
   $global:jsonenvironmentMain = (((($jsonenvironmentFull) `
   -replace '(?m)(?<=^([^"]|"[^"]*")*)//.*') `
