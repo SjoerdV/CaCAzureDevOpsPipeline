@@ -4,7 +4,7 @@
 By: Sjoerd de Valk, SP de Valk Consultancy, 2020
 .DESCRIPTION
 
-This script needs to be scheduled daily, and will manage each Guest User life cycle: Creation, Expiration, Re-activation and Deletion.
+This script needs to be scheduled daily, and will manage each Guest User lifecycle: Creation, Expiration, Re-activation and Deletion.
 .PARAMETER Environment
 
 Specify the environment this script will run for
@@ -108,6 +108,8 @@ foreach ($GuestUser in $GuestUsersEXO) {
       Send-Report $Owner $Subject $Body
       Write-Host "Sending email to admin $($global:dstCred.Username)"
       Send-Report $global:dstCred.Username $Subject $Body
+      #Set a script scoped variable with the last processed guest user
+      $script:LastGuestUpnExpired = "$($GuestUser.UserPrincipalName)"
     }
   }
   else {
@@ -118,28 +120,58 @@ foreach ($GuestUser in $GuestUsersEXO) {
   }
 }
 
-
-# Reactivate Guest User Accounts
-$Upns = Get-GuestReactivationsFromSharePointList
-foreach ($Upn in $Upns) {
-  #Reactivate previously expired account
-  Set-AzureADUser -ObjectId $Upn -AccountEnabled $true
-  #Set new expiration date
-  $ExpirationDate = $Today.AddDays($StaleAgeInDays).toString('u')
-  Set-MailUser -Identity $Upn -CustomAttribute15 $ExpirationDate
-  #remove reactivated account from sharepoint list
-  Remove-GuestFromSharePointList $Upn
+#Wait until expirations are synced to Exchange Online
+if ($script:LastGuestUpnExpired) {
+  Start-WaitOnMailUserAccountDisabledStatus $script:LastGuestUpnExpired "GuestMailUser" $true
 }
 
+# Reactivate Guest User Accounts
+$GuestUsers = Get-GuestReactivationsFromSharePointList #This function should return a collection of string with UPN values.
+foreach ($GuestUser in $GuestUsers) {
+  $MailUser = Get-MailUser -Identity $GuestUser
+  $Owner = $MailUser.CustomAttribute14
+  $ExpirationDate = $MailUser.CustomAttribute15
+  #Reactivate previously expired account
+  Set-AzureADUser -ObjectId $GuestUser -AccountEnabled $true
+  #Set new expiration date
+  $ExpirationDate = $Today.AddDays($StaleAgeInDays).toString('u')
+  Set-MailUser -Identity $GuestUser -CustomAttribute15 $ExpirationDate
+  #Remove reactivated account from sharepoint list
+  Remove-GuestFromSharePointList $GuestUser
+  #Send email to owner and admin
+  $Subject = "External User $($GuestUser) is reactivated"
+  $Body = "The account for External User '$($GuestUser)' with Owner: '$($Owner)' has been reactivated by a user initiated reactivatiion process. The new Expiration date is '$ExpirationDate'"
+  Write-Host "Sending email to owner $($Owner)"
+  Send-Report $Owner $Subject $Body
+  Write-Host "Sending email to admin $($global:dstCred.Username)"
+  Send-Report $global:dstCred.Username $Subject $Body
+  ## Set a script scoped variable with the last processed guest user
+  $script:LastGuestUpnReactivated = $GuestUser
+}
+
+#Wait until expirations are synced to Exchange Online
+if ($script:LastGuestUpnReactivated) {
+  Start-WaitOnMailUserAccountDisabledStatus $script:LastGuestUpnReactivated "GuestMailUser" $false
+}
 
 # Delete Guest User Accounts
 [int]$StaleDeleteDifference = $DeleteAgeInDays - $StaleAgeInDays
 $GuestUsersEXO = Get-User -RecipientTypeDetails GuestMailUser -ResultSize Unlimited | Where-Object { $_.AccountDisabled }
 foreach ($GuestUser in $GuestUsersEXO) {
   if ($Today -ge (Get-Date ((Get-MailUser $GuestUser.UserPrincipalName).CustomAttribute14)).addDays($StaleDeleteDifference)) {
+    $MailUser = Get-MailUser -Identity $GuestUser.UserPrincipalName
+    $Owner = $MailUser.CustomAttribute14
+    $ExpirationDate = $MailUser.CustomAttribute15
     #Remove account when current date is greater than expiration date + (deletion age - stale age)
     Remove-MailUser -Identity $GuestUser.UserPrincipalName -Confirm:$false
     #Remove SharePoint list item, if exists
     Remove-GuestFromSharePointList $GuestUser.UserPrincipalName
+    #Send email to owner and admin
+    $Subject = "External User $($GuestUser.UserPrincipalName) is permanently deleted"
+    $Body = "The account for External User '$($GuestUser.UserPrincipalName)' with Owner: '$($Owner)' has been permanently deleted."
+    Write-Host "Sending email to owner $($Owner)"
+    Send-Report $Owner $Subject $Body
+    Write-Host "Sending email to admin $($global:dstCred.Username)"
+    Send-Report $global:dstCred.Username $Subject $Body
   }
 }
