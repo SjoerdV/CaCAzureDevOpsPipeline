@@ -9,7 +9,12 @@ abstract: |
   This document is about starting your own Configuration as Code repository for Microsoft 365 projects.
 permalink: /index.html
 ---
-[![GitHub All Releases](https://img.shields.io/github/downloads/SjoerdV/ConvertOneNote2MarkDown/total.svg)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/releases)
+[![GitHub License](https://img.shields.io/github/license/SjoerdV/CaCAzureDevOpsPipeline)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/blob/master/docs/LICENSE)
+![GitHub All Views](https://counter.gofiber.io/badge/SjoerdV/CaCAzureDevOpsPipeline?unique=true)
+[![GitHub All Stars](https://img.shields.io/github/stars/SjoerdV/CaCAzureDevOpsPipeline?label=stars)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/stargazers)
+[![GitHub All Forks](https://img.shields.io/github/forks/SjoerdV/CaCAzureDevOpsPipeline?label=forks)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/network/members)
+[![GitHub Latest Release](https://img.shields.io/github/v/release/SjoerdV/CaCAzureDevOpsPipeline?include_prereleases&color=red)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/releases)
+[![GitHub All Downloads](https://img.shields.io/github/downloads/SjoerdV/CaCAzureDevOpsPipeline/total?label=downloads)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/releases)
 
 ## Configuration as Code - Azure DevOps Pipeline for Microsoft 365 - Starter
 
@@ -199,9 +204,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+#### [Released]
+
+#### [v3.0] - 2020-12-28
+
+##### Added
+
+* Nothing
+
+##### Changed
+
+* Updated the GuestUserLifeCycle script and helper functions to include wait steps when switching between EXO and AAD contexts.
+
+##### Removed
+
+* Nothing
+
+### Credits
+
+None
 #### [Unreleased]
 
-#### [2.1.0] - 2020-08-06
+#### [v2.1] - 2020-08-06
 
 ##### Added
 
@@ -219,7 +243,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 None
 
-#### [2.0.0] - 2020-07-24
+#### [v2.0] - 2020-07-24
 
 ##### Added
 
@@ -239,7 +263,7 @@ None
 
 None
 
-#### [1.0.0] - 2020-07-12
+#### [v1.0] - 2020-07-12
 
 ##### Added
 
