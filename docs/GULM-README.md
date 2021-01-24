@@ -9,6 +9,12 @@ abstract: |
   This document is about managing Microsoft 365 Azure B2B Guest Users using a Azure DevOps YAML pipeline.
 permalink: /gulm.html
 ---
+[![GitHub License](https://img.shields.io/github/license/SjoerdV/CaCAzureDevOpsPipeline)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/blob/master/docs/LICENSE)
+![GitHub All Views](https://counter.gofiber.io/badge/SjoerdV/CaCAzureDevOpsPipeline?unique=true)
+[![GitHub All Stars](https://img.shields.io/github/stars/SjoerdV/CaCAzureDevOpsPipeline?label=stars)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/stargazers)
+[![GitHub All Forks](https://img.shields.io/github/forks/SjoerdV/CaCAzureDevOpsPipeline?label=forks)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/network/members)
+[![GitHub Latest Release](https://img.shields.io/github/v/release/SjoerdV/CaCAzureDevOpsPipeline?include_prereleases&color=red)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/releases)
+[![GitHub All Downloads](https://img.shields.io/github/downloads/SjoerdV/CaCAzureDevOpsPipeline/total?label=downloads)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/releases)
 ## Guest User Life Cycle Management Tool
 
 ### Summary
