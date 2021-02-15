@@ -15,6 +15,7 @@ permalink: /gulm.html
 [![GitHub All Forks](https://img.shields.io/github/forks/SjoerdV/CaCAzureDevOpsPipeline?label=forks)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/network/members)
 [![GitHub Latest Release](https://img.shields.io/github/v/release/SjoerdV/CaCAzureDevOpsPipeline?include_prereleases&color=red)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/releases)
 [![GitHub All Downloads](https://img.shields.io/github/downloads/SjoerdV/CaCAzureDevOpsPipeline/total?label=downloads)](https://github.com/SjoerdV/CaCAzureDevOpsPipeline/releases)
+
 ## Guest User Life Cycle Management Tool
 
 ### Summary
