@@ -3,7 +3,7 @@ title: 'Guest User Life Cycle Management Tool'
 author:
 - Sjoerd de Valk, SPdeValk Consultancy
 date: 2020-07-25T16:00:00+02:00
-last_modified_at: 2020-07-27T13:00:00+02:00
+last_modified_at: 2022-06-27T20:30:00+02:00
 keywords: [azure, devops, pipeline, yaml, microsoft365]
 abstract: |
   This document is about managing Microsoft 365 Azure B2B Guest Users using a Azure DevOps YAML pipeline.
@@ -34,18 +34,20 @@ None
 
 * Your own Azure DevOps organization, preferably linked to your Azure AD organization.
 * If the PowerShell script `Scripts\M365\3. Governance\_GuestUserLifeCycleManagement\Apply-GuestUserLifeCycle.ps1` needs to be run locally:
-  * Only Windows 7+ with WMI 5.1 and .NET Framework 4.6.1+ is supported (Prefer Windows 10)
-  * [PnP PowerShell](https://github.com/pnp/PnP-PowerShell#installation) module needs to be installed
-  * [Azure AD Preview](https://www.powershellgallery.com/packages/AzureADPreview/2.0.2.105) module needs to be installed
-  * [Exchange Online PowerShell V2](https://docs.microsoft.com/en-us/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps#install-and-maintain-the-exchange-online-powershell-v2-module) module needs to be installed  
-* If you intend to use the 'Cert' method for authenticating:
+  * This script is fully cross-platform compatible using [PowerShell 7+](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell?view=powershell-7.2):
+    * Windows 7+ is supported (Windows 10 is recommended)
+    * Linux and MacOS are also supported
+  * [PnP.PowerShell](https://pnp.github.io/powershell/articles/installation.html) module needs to be installed
+  * [Exchange Online PowerShell V2](https://docs.microsoft.com/en-us/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps#install-and-maintain-the-exchange-online-powershell-v2-module) module needs to be installed
+  * [EasyGraph](https://github.com/andlin03/EasyGraph) module needs to be installed
+* If you intend to use either the 'PfxFile' or 'Thumb' method for authenticating:
   * Make sure you have [previously executed](README.md#add-certificates-and-credentials) the procedure for using the repository and pipeline in your own solution
 
 ### Installation
 
 You could create a custom app with some sort of database that will allow to store expired accounts and add a way to reactivate them by a Guest Inviter.
 
-I choose to have implement a combination of a SharePoint Online List and a Power Automate Flow to do exactly that.
+I chose to implement a combination of a SharePoint Online List and a Power Automate Flow to do exactly that.
 
 #### Add SharePoint artifacts and permissions
 
@@ -73,11 +75,11 @@ You have the means to set up security on both the Flow as the SharePoint List.
 
 Update the 3 empty 'placeholder' functions in `Scripts\M365\PnP-HelperFunctions.ps1` to your liking so they will perform their function of fetching and manipulating items in the SharePoint List.
 
-1. `Add-GuestExpirationToSharePointList`
-1. `Get-GuestReactivationsFromSharePointList`
-1. `Remove-GuestFromSharePointList`
+1. `Add-GuestExpirationToSharePointList` -> This function should add or update the main SharePoint list item for the provided UPN
+1. `Get-GuestReactivationsFromSharePointList` -> This function should return a collection of SharePoint List Items with all necessary UPN values contained in the Title column.
+1. `Remove-GuestFromSharePointList` -> This function should removed a list item for the provided UPN from the main SharePoint list
 
-> **Tip:** to connect to SharePoint-Online use the built-in function call
+> **Tip:** to connect to SharePoint-Online use the following built-in function call provided by the scaffold.
 >
 > ```powershell
 > $global:siteUrlTarget = "$($global:jsonenvironmentMisc.tenantUrl)/sites/[yoursite]"
@@ -87,7 +89,7 @@ Update the 3 empty 'placeholder' functions in `Scripts\M365\PnP-HelperFunctions.
 
 #### Execute Locally
 
-If you followed instructions you should now be able to execute the script locally.
+If you followed instructions you should now be able to execute the script `Apply-GuestUserLifeCycle.ps1` locally.
 
 #### Add additional pipeline
 
