@@ -93,7 +93,7 @@ stages:
             displayName: 'Download Certificate'
             name: mycert # The name with which to reference the secure file's path on the agent, like $(mySecureFile.secureFilePath)
             inputs:
-              secureFile: "[ORGANIZATION PREFIX]-[CLIENTID]-[ENVIRONMENT].pfx" # The file name or GUID of the secure file
+              secureFile: "[ORGANIZATION PREFIX]-[CLIENTID]-[ENVIRONMENT].pfx" # The file name or GUID of the secure file. ex. "MC-00000000-0000-0000-0000-000000000000-PROD.pfx"
             condition: ne(variables['DSTCREDS_PFXPASS'], '')
             env:
               DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
@@ -147,7 +147,7 @@ stages:
             displayName: 'Download Certificate'
             name: mycert # The name with which to reference the secure file's path on the agent, like $(mySecureFile.secureFilePath)
             inputs:
-              secureFile: "[ORGANIZATION PREFIX]-[CLIENTID]-[ENVIRONMENT].pfx" # The file name or GUID of the secure file
+              secureFile: "[ORGANIZATION PREFIX]-[CLIENTID]-[ENVIRONMENT].pfx" # The file name or GUID of the secure file. ex. "MC-00000000-0000-0000-0000-000000000000-PROD.pfx"
             condition: ne(variables['DSTCREDS_PFXPASS'], '')
             env:
               DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group

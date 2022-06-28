@@ -121,6 +121,7 @@ In addition to the credential variables you used for initial set-up add these ex
 `$env:DSTCREDS_THUMB = Read-Host "Enter the Certificate Thumbprint for the app certificate"`
 `$env:DSTCREDS_PFXPASS = Read-Host "Enter the Certificate PFX File password for the app certificate"`
 `$env:DSTCREDS_SECRET = Read-Host "Enter the Certificate Client Secret for the app certificate"`
+`$env:DSTCREDS_PFXFILE = Read-Host "Enter the Certificate PFX file path for the app certificate"`
 
 > **Note:** You could use your own GnuPG method of supplying and storing these values.
 
