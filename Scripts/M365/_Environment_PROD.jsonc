@@ -1,5 +1,6 @@
 {
   "environmentMain": {
+    "useWindowsPowerShell": false, // Can be either $true (for Windows PowerShell 5.1) or $false (for PowerShell Core/7+)
     "customerName": "MyClient", //used as parameter {{Name}} in 'environmentMisc' section
     "customerPrefix": "MC", //Max 4 characters!, used as parameter {{Prefix}} in 'environmentMisc' section
     "customerO365TenantPrefix": "myclient", //used as parameter {{O365TenantPrefix}} in 'environmentMisc' section
@@ -8,67 +9,86 @@
   "environmentMisc": {
     "tenantAdminUrl": "https://{{O365TenantPrefix}}-admin.sharepoint.com",
     "tenantUrl": "https://{{O365TenantPrefix}}.sharepoint.com",
+    "tenantMyUrl": "https://{{O365TenantPrefix}}-my.sharepoint.com",
     "credentialTarget": "myclient-p", // fill in the name of the Generic Windows Credential you want to use containing credentials of a SharePoint Administrator
     "credentialGraphTarget": "myclient-graph-p", // fill in the name of the Generic Windows Credential you want to use containing credentials of an App Principal that you have generated with the script 'Scripts\M365\1. Prerequisites\Install-AzureADAppPrincipals.ps1'
+    "AzureADTenantId": "00000000-0000-0000-0000-000000000000", // find your directory ID here: https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/Properties
     "AzureAppsAndPrincipals" : [
       {
-        "AppName": "PnP PowerShell App",
+        "AppName": "M365 PowerShell App",
         "AppSettings": {
-          "AvailableToOtherTenants": false,
+          "SignInAudience": "AzureADMyOrg",
+          // "AvailableToOtherTenants": false, // Deprecated: https://docs.microsoft.com/en-us/cli/azure/microsoft-graph-migration
           "AuthenticationScheme": "Certificate", // Options are 'Secret' or 'Certificate', where 'Secret' will just create a Secret for the App Principal while 'Certificate' will also create a pfx file.
           "RequiredResourceAccess": [ // Do not change or alter the structure of this part, as it is important to maintain as is. You may of course change the values or add elements
             {
-              "ResourceAppId": "00000003-0000-0000-c000-000000000000", // MS Graph API
-              "ResourceAccess" : [ // Get Permission Id's here: https://marketplace.visualstudio.com/items?itemName=stephane-eyskens.aadv1appprovisioning
+              "resourceAppId": "00000003-0000-0000-c000-000000000000", // MS Graph API
+              "resourceAccess" : [ // Get Permission Id's here: https://marketplace.visualstudio.com/items?itemName=stephane-eyskens.aadv1appprovisioning
                 {
-                  "Id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d", // Delegate: User.Read
-                  "Type": "Scope"
+                  "id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d", // Delegate: User.Read
+                  "type": "Scope"
                 },
                 {
-                  "Id": "62a82d76-70ea-41e2-9197-370581804d09", // Application: Group.ReadWrite.All
-                  "Type": "Role"
+                  "id": "19dbc75e-c2e2-444c-a770-ec69d8559fc7", // Application: Directory.ReadWrite.All
+                  "type": "Role"
                 },
                 {
-                  "Id": "a82116e5-55eb-4c41-a434-62fe8a61c773", // Application: Sites.FullControl.All
-                  "Type": "Role"
+                  "id": "741f803b-c850-494e-b5df-cde7c675a1ca", // Application: User.ReadWrite.All
+                  "type": "Role"
+                },
+                {
+                  "id": "62a82d76-70ea-41e2-9197-370581804d09", // Application: Group.ReadWrite.All
+                  "type": "Role"
+                },
+                {
+                  "id": "a82116e5-55eb-4c41-a434-62fe8a61c773", // Application: Sites.FullControl.All
+                  "type": "Role"
+                },
+                {
+                  "id": "75359482-378d-4052-8f01-80520e7db3cd", // Application: Files.ReadWrite.All
+                  "type": "Role"
                 }
               ]
             },
             {
-              "ResourceAppId": "00000003-0000-0ff1-ce00-000000000000", // SharePoint Online API
-              "ResourceAccess" : [ // Get Permission Id's here: https://marketplace.visualstudio.com/items?itemName=stephane-eyskens.aadv1appprovisioning
+              "resourceAppId": "00000003-0000-0ff1-ce00-000000000000", // SharePoint Online API
+              "resourceAccess" : [ // Get Permission Id's here: https://marketplace.visualstudio.com/items?itemName=stephane-eyskens.aadv1appprovisioning
                 {
-                  "Id": "678536fe-1083-478a-9c59-b99265e6b0d3", // Application: Sites.FullControl.All
-                  "Type": "Role"
+                  "id": "678536fe-1083-478a-9c59-b99265e6b0d3", // Application: Sites.FullControl.All
+                  "type": "Role"
                 },
                 {
-                  "Id": "c8e3537c-ec53-43b9-bed3-b2bd3617ae97", // Application: TermStore.ReadWrite.All
-                  "Type": "Role"
+                  "id": "c8e3537c-ec53-43b9-bed3-b2bd3617ae97", // Application: TermStore.ReadWrite.All
+                  "type": "Role"
                 },
                 {
-                  "Id": "741f803b-c850-494e-b5df-cde7c675a1ca", // Application: User.ReadWrite.All
-                  "Type": "Role"
+                  "id": "741f803b-c850-494e-b5df-cde7c675a1ca", // Application: User.ReadWrite.All
+                  "type": "Role"
                 }
               ]
             },
             {
-              "ResourceAppId": "00000002-0000-0ff1-ce00-000000000000", // Exchange Online API
-              "ResourceAccess": [
+              "resourceAppId": "00000002-0000-0ff1-ce00-000000000000", // Exchange Online API
+              "resourceAccess": [
                 {
-                  "Id": "dc50a0fb-09a3-484d-be87-e023b12c6440", // Application: Exchange.ManageAsApp
-                  "Type": "Role"
+                  "id": "dc50a0fb-09a3-484d-be87-e023b12c6440", // Application: Exchange.ManageAsApp
+                  "type": "Role"
                 }
               ]
             }
           ],
           "ServicePrincipal": [
             {
-              "Tags": [
+              "TagConfig": {
+                "tags": [
+                  "HideApp", // This setting will make sure the App is not visible in the MyApps Portal
+                  "WindowsAzureActiveDirectoryIntegratedApp"
+                ]
+              },
+              "RoleMemberShips": [ // Get-AzureADDirectoryRole
                 {
-                  "Name": "HideApp" // This setting will make sure the App is not visible in the MyApps Portal
-                },
-                {
-                  "Name": "WindowsAzureActiveDirectoryIntegratedApp"
+                  "Id": "62e90394-69f5-4237-9190-012177145e10",
+                  "DisplayName": "Global administrator"
                 }
               ]
             }
@@ -77,8 +97,12 @@
       }
     ],
     "ServiceAuthenticationSchemes": {
-      "default": "Cert", // Should NOT be empty. Could be either 'Cert' or 'Cred'. Choose 'Cert' if you want to connect with a Certificate Thumbprint. Choose 'Cred' if you want to connect with username and password
+      "default": "PfxFile", // Should NOT be empty. Could be either 'Cred', 'Thumb' or 'PfxFile'. Choose 'Cred' if you want to connect with username and password. Choose 'Thumb' if you want to connect with a Certificate Thumbprint. Choose 'PfxFile' if you want to connect with a Certificate Pfx File
       "perService": [
+        {
+          "serviceName": "Az", // Only use Azure CLI, because of known incompatibilities with PnP.PowerShell
+          "authenticationScheme": "" // if other than default
+        },
         {
           "serviceName":"PnPSpo",
           "authenticationScheme": "" // if other than default
@@ -88,7 +112,7 @@
           "authenticationScheme": "" // if other than default
         },
         {
-          "serviceName":"Aad",
+          "serviceName":"Mg",
           "authenticationScheme": "" // if other than default
         },
         {
@@ -98,13 +122,5 @@
         }
       ]
     }
-  },
-  "siteSettings": [
-    {
-      "name": "Root",
-      "spurlTarget": "https://{{O365TenantPrefix}}.sharepoint.com",
-      "siteTitle": "{{Name}} Intranet",
-      "siteDescription": "{{Name}} Intranet"
-    }
-  ]
+  }
 }

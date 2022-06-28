@@ -1,0 +1,16 @@
+{
+  "siteSettings": [
+    {
+      "name": "Root",
+      "type": "Root",
+      "spurlTarget": "https://{{O365TenantPrefix}}.sharepoint.com",
+      "siteTitle": "{{Name}} Intranet",
+      "siteDescription": "{{Name}} Intranet",
+      "siteExternalSharing": "Disabled",
+      "addEveryoneExceptExternalUsers2VisitorsGroup": true,
+      "siteAdditionalCollectionAdmins": [],
+      "siteAdditionalOwners": [],
+      "siteNavigationProviders": []
+    }
+  ]
+}
