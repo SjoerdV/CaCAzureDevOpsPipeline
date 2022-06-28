@@ -66,7 +66,7 @@ foreach ($appdefinition in $appdefinitions) {
   $certthumb = $null
   $pfxpwd = $null
   $skipped = $false
-  $app = (az ad app list --display-name "$($appdefinition.AppName)" | ConvertFrom-Cli)
+  $app = (az ad app list --filter "displayname eq '$($appdefinition.AppName)'" | ConvertFrom-Cli)
   [array]$AppAccess = @()
   [array]$AppAccess += $($appdefinition.AppSettings.RequiredResourceAccess)
   $AppAccessJson = (ConvertTo-Json $AppAccess -Depth 10 -Compress) > ".temp-body.json"
@@ -168,7 +168,7 @@ foreach ($appdefinition in $appdefinitions) {
     }
     # Consent App Permissions
     Write-Host "Consenting App '$($app.appId)' Permissions..."
-    $app = (az ad app list --display-name "$($appdefinition.AppName)" | ConvertFrom-Cli)
+    $app = (az ad app list --filter "displayname eq '$($appdefinition.AppName)'" | ConvertFrom-Cli)
     $consent = (Start-RetryScriptBlock -ScriptBlock { (az ad app permission admin-consent --id $app.appId | ConvertFrom-Cli) } -Retries 5 -SecondsDelay 5 -Indent " ")
     Write-Host "Done!"
     ## Print results
