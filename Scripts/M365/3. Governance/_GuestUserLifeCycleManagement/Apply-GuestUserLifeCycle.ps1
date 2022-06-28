@@ -48,15 +48,15 @@ $RepoRootLevel = "$O365ScriptRootLevel..\..\"
 Set-Environment $Environment "$($O365ScriptRootLevel)" "Root"
 
 #Load Helper Functions
-. "$($O365ScriptRootLevel)Powershell-HelperFunctions.ps1"
+. "$($O365ScriptRootLevel)..\Powershell-HelperFunctions.ps1"
 . "$($O365ScriptRootLevel)PnP-HelperFunctions.ps1"
-. "$($O365ScriptRootLevel)AzureAD-HelperFunctions.ps1"
+. "$($O365ScriptRootLevel)Mg-HelperFunctions.ps1"
 . "$($O365ScriptRootLevel)Exo-HelperFunctions.ps1"
 
 #Do Stuff
 #------------------------------------------------------------------------
-# Connect to Azure AD
-Connect-Aad $global:ServiceConnectionMethod.Aad
+# Connect to Microsoft Graph
+Connect-Mg $global:ServiceConnectionMethod.Mg
 
 
 # Connect to Exchange Online
@@ -91,7 +91,7 @@ ForEach ($Rec in $Records) {
 }
 
 
-# Add Owner to CustomAttribute1
+# Add Owner to CustomAttribute14
 ForEach ($Object in $ToBeProcessed) {
   if (!(Get-MailUser $Object.Guest).CustomAttribute14) {
     Write-Host "Setting '$($Object.Actor)' as owner for guest '$($Object.Guest)'"
@@ -100,7 +100,7 @@ ForEach ($Object in $ToBeProcessed) {
 }
 
 
-# Expire accounts or set expiration date in CustomAttribute2
+# Expire accounts or set expiration date in CustomAttribute15
 $GuestUsersEXO = Get-User -RecipientTypeDetails GuestMailUser -ResultSize Unlimited | Where-Object { !$_.AccountDisabled }
 foreach ($GuestUser in $GuestUsersEXO) {
   $MailUser = Get-MailUser -Identity $GuestUser.UserPrincipalName
@@ -109,9 +109,22 @@ foreach ($GuestUser in $GuestUsersEXO) {
   if ($ExpirationDate) {
     if ($Today -ge (Get-Date $ExpirationDate)) {
       #Expire existing accounts with current date is greater than expiration date
-      Write-Host "Disabling guest '$($GuestUser.UserPrincipalName)'"
-      Set-AzureADUser -ObjectId $GuestUser.UserPrincipalName -AccountEnabled $false
-      #Write disabled account to sharepoint list
+      try {
+        Write-Host "Disabling guest '$($GuestUser.UserPrincipalName)'"
+        ## construct request body
+        $body = @{
+          accountEnabled = $false
+        }
+          # Get endpoint
+        $uri = "/users/$([System.Web.HttpUtility]::UrlEncode($GuestUser.UserPrincipalName))"
+        # place the call
+        $result = Start-RetryScriptBlock -ScriptBlock { Invoke-EasyGraphRequest -Resource "$($uri)" -Method "PATCH" -APIVersion "beta" -Body $body -ContentType "application/json" -ErrorAction Stop } -Retries 5 -SecondsDelay 5
+        Write-Host "Done!"
+      }
+      catch {
+        Write-Host "Disabling guest '$($GuestUser.UserPrincipalName)' failed: $($Error[0].ToString())" -ForegroundColor "Red"
+      }
+      #Write disabled account to SharePoint List
       Write-Host "Add expired guest '$($GuestUser.UserPrincipalName)' to SharePoint List"
       Add-GuestExpirationToSharePointList $GuestUser.UserPrincipalName
       #Send email to owner and admin
@@ -139,21 +152,44 @@ if ($script:LastGuestUpnExpired) {
 }
 
 # Reactivate Guest User Accounts
-$GuestUsers = Get-GuestReactivationsFromSharePointList #This function should return a collection of string with UPN values.
+Write-Host "Fetching Stale Guest Users..."
+$GuestUsers = Get-GuestReactivationsFromSharePointList #This function should return a collection of SharePoint List Items with all necessary UPN values contained in the Title column.
 foreach ($GuestUser in $GuestUsers) {
   $MailUser = Get-MailUser -Identity $GuestUser
   $Owner = $MailUser.CustomAttribute14
   $ExpirationDate = $MailUser.CustomAttribute15
   #Reactivate previously expired account
-  Set-AzureADUser -ObjectId $GuestUser -AccountEnabled $true
+  try {
+    Write-Host "Reactivating Stale Guest User '$($GuestUser.Title)'..."
+    ## construct request body
+    $body = @{
+      accountEnabled = $true
+    }
+    # Get endpoint
+    $uri = "/users/$([System.Web.HttpUtility]::UrlEncode($GuestUser.Title))"
+    # place the call
+    $result = Start-RetryScriptBlock -ScriptBlock { Invoke-EasyGraphRequest -Resource "$($uri)" -Method "PATCH" -APIVersion "beta" -Body $body -ContentType "application/json" -ErrorAction Stop } -Retries 5 -SecondsDelay 5
+    Write-Host "Done!"
+  }
+  catch {
+    Write-Host "Disabling Stale Guest User '$($GuestUser.Title)' failed: $($Error[0].ToString())" -ForegroundColor "Red"
+  }
   #Set new expiration date
-  $ExpirationDate = $Today.AddDays($StaleAgeInDays).toString('u')
-  Set-MailUser -Identity $GuestUser -CustomAttribute15 $ExpirationDate
-  #Remove reactivated account from sharepoint list
-  Remove-GuestFromSharePointList $GuestUser
+  try {
+    $ExpirationDate = $Today.AddDays($StaleAgeInDays).toString('u')
+    Write-Host "Setting Expiry Date '$ExpirationDate' on Guest User '$($GuestUser.Title)'..."
+    Set-MailUser -Identity $GuestUser.Title -CustomAttribute15 $ExpirationDate
+    Write-Host "Done!"
+  }
+  catch {
+    Write-Host "Setting Reactivated Guest User '$($GuestUser.Title)' New Expiry Date '$ExpirationDate' failed: $($Error[0].ToString())" -ForegroundColor "Red"
+  }
+  #Remove reactivated account from SharePoint List
+  Write-Host "Remove entry for reactivated account for Guest User '$($GuestUser.Title)' from SharePoint List..."
+  Remove-GuestFromSharePointList $GuestUser.Title
   #Send email to owner and admin
-  $Subject = "External User $($GuestUser) is reactivated"
-  $Body = "The account for External User '$($GuestUser)' with Owner: '$($Owner)' has been reactivated by a user initiated reactivatiion process. The new Expiration date is '$ExpirationDate'"
+  $Subject = "External User $($GuestUser.Title) is reactivated"
+  $Body = "The account for External User '$($GuestUser.Title)' with Owner: '$($Owner)' has been reactivated by a user initiated reactivatiion process. The new Expiration date is '$ExpirationDate'"
   Write-Host "Sending email to owner $($Owner)"
   Send-Report $Owner $Subject $Body
   Write-Host "Sending email to admin $($global:dstCred.Username)"
@@ -177,7 +213,8 @@ foreach ($GuestUser in $GuestUsersEXO) {
     $ExpirationDate = $MailUser.CustomAttribute15
     #Remove account when current date is greater than expiration date + (deletion age - stale age)
     Remove-MailUser -Identity $GuestUser.UserPrincipalName -Confirm:$false
-    #Remove SharePoint list item, if exists
+    #Remove SharePoint List item, if exists
+    Write-Host "Remove entry for deleted account for Guest User '$($GuestUser.Title)' from SharePoint List..."
     Remove-GuestFromSharePointList $GuestUser.UserPrincipalName
     #Send email to owner and admin
     $Subject = "External User $($GuestUser.UserPrincipalName) is permanently deleted"
