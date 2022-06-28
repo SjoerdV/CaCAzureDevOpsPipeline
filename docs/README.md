@@ -87,7 +87,9 @@ Add the credential you wish to use for initial set-up as the **Generic Windows C
 ###### MacOS/Linux - 'Cred' authentication
 
 Add the credential you wish to use for initial set-up as global variables to your PowerShell 7+ (pwsh) session:
+
 `$env:DSTCREDS_USERNAME = Read-Host "Enter username"`
+
 `$env:DSTCREDS_PASSWORD = Read-Host "Enter password"`
 
 > **Note:** You could use your own GnuPG method of supplying and storing these values.
@@ -117,10 +119,15 @@ Now find or add the Generic Credential in the Windows Credential Manager which w
 ###### MacOS/Linux: 'PfxFile' or 'Thumb' authentication
 
 In addition to the credential variables you used for initial set-up add these extra global variables to your PowerShell 7+ (pwsh) session any time you wish to authenticate using an App:
+
 `$env:DSTCREDS_CLIENTID = Read-Host "Enter the App ID or Client Id for the App"`
+
 `$env:DSTCREDS_THUMB = Read-Host "Enter the Certificate Thumbprint for the app certificate"`
+
 `$env:DSTCREDS_PFXPASS = Read-Host "Enter the Certificate PFX File password for the app certificate"`
+
 `$env:DSTCREDS_SECRET = Read-Host "Enter the Certificate Client Secret for the app certificate"`
+
 `$env:DSTCREDS_PFXFILE = Read-Host "Enter the Certificate PFX file path for the app certificate"`
 
 > **Note:** You could use your own GnuPG method of supplying and storing these values.
