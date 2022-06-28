@@ -49,7 +49,7 @@ $RepoRootLevel = "$O365ScriptRootLevel..\..\"
 Set-Environment $Environment "$($O365ScriptRootLevel)" "Root"
 
 #Load Helper Functions
-. "$($O365ScriptRootLevel)Powershell-HelperFunctions.ps1"
+. "$($O365ScriptRootLevel)..\Powershell-HelperFunctions.ps1"
 . "$($O365ScriptRootLevel)PnP-HelperFunctions.ps1"
 
 #Do Stuff
