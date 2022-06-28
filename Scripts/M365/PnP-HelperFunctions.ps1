@@ -24,11 +24,6 @@ Do not adjust any function. Just add new ones. Clean-up later.
 Load this script file as follows: . .\PnP-HelperFunctions.ps1
 #>
 
-# Import Modules
-If (!(Get-module SharePointPnPPowerShellOnline)) {
-  Import-Module SharePointPnPPowerShellOnline -Scope "Local" -DisableNameChecking -ErrorAction SilentlyContinue
-}
-
 # Import Functions
 function Add-GuestExpirationToSharePointList([string]$GuestUpn) {
   Write-Host "Not implemented"

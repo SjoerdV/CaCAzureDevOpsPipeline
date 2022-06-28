@@ -24,43 +24,53 @@ Adjust all environment specific variables for your DTAP environments.
 Load this script file as follows: . .\PnP-EnvironmentFunctions.ps1
 #>
 
+# Import Modules
+if (!(Get-Module -Name Microsoft.PowerShell.Security)) {
+  Import-Module Microsoft.PowerShell.Security -DisableNameChecking -Force
+}
+if ($IsWindows) {
+  if (!(Get-Module -Name pki)) {
+    Import-Module pki -DisableNameChecking -Force
+  }
+}
+if (!(Get-Module -Name PnP.PowerShell)) {
+  Import-Module PnP.PowerShell -Scope Global -DisableNameChecking -Force
+}
+
 
 function Set-Environment($Environment, $Path, $Site){
-  #CSOM first
-
-  # Import Types
-
-  # Import Modules
-  If (!(Get-module SharePointPnPPowerShellOnline)) {
-    Import-Module SharePointPnPPowerShellOnline -Scope "Local"
-  }
-
-	# Set variables
+  # Set variables
   # NOTE: Stripping comments by the first two replace rows is not needed in Powershell 6+
-  $jsonenvironmentFull = Get-Content -Raw -LiteralPath "$($Path)_Environment_$($Environment).jsonc"
+  $jsonenvironmentFull = Get-Content -Raw -LiteralPath "$($Path)_Environment_$($Environment).jsonc" -Encoding UTF8
+  $jsonenvironmentSites = Get-Content -Raw -LiteralPath "$($Path)_SitesConfig.jsonc" -Encoding UTF8
 
-  $global:jsonenvironmentMain = (((($jsonenvironmentFull) `
+  $global:jsonenvironmentMain = ((((($jsonenvironmentFull) `
   -replace '(?m)(?<=^([^"]|"[^"]*")*)//.*') `
   -replace '(?ms)/\*.*?\*/') `
+  -replace "{{Environment}}","$($Environment)") `
   | ConvertFrom-Json).environmentMain
 
-  $global:jsonenvironmentMisc = (((((((($jsonenvironmentFull) `
+  $global:jsonenvironmentMisc = ((((((((($jsonenvironmentFull) `
   -replace '(?m)(?<=^([^"]|"[^"]*")*)//.*') `
   -replace '(?ms)/\*.*?\*/') `
+  -replace "{{Environment}}","$($Environment)") `
   -replace "{{Name}}","$($global:jsonenvironmentMain.customerName)") `
   -replace "{{Prefix}}","$($global:jsonenvironmentMain.customerPrefix)") `
   -replace "{{O365TenantPrefix}}","$($global:jsonenvironmentMain.customerO365TenantPrefix)") `
   -replace "{{O365GroupsAcceptedEmailDomain}}","$($global:jsonenvironmentMain.customerO365GroupsAcceptedEmailDomain)") `
   | ConvertFrom-Json).environmentMisc
 
-  $global:jsonsiteSettings = (((((((($jsonenvironmentFull) `
+  $global:jsonsiteSettingsFull = ((((((((($jsonenvironmentSites) `
   -replace '(?m)(?<=^([^"]|"[^"]*")*)//.*') `
   -replace '(?ms)/\*.*?\*/') `
+  -replace "{{Environment}}","$($Environment)") `
   -replace "{{Name}}","$($global:jsonenvironmentMain.customerName)") `
   -replace "{{Prefix}}","$($global:jsonenvironmentMain.customerPrefix)") `
   -replace "{{O365TenantPrefix}}","$($global:jsonenvironmentMain.customerO365TenantPrefix)") `
   -replace "{{O365GroupsAcceptedEmailDomain}}","$($global:jsonenvironmentMain.customerO365GroupsAcceptedEmailDomain)") `
-  | ConvertFrom-Json).siteSettings | Where-Object { $_.name -eq $Site}
+  | ConvertFrom-Json).siteSettings
+  $global:jsonsiteSettings = $global:jsonsiteSettingsFull | Where-Object { $_.name -eq $Site}
+
 
   # Set all Service Connection Authentication parameters
   [hashtable]$global:ServiceConnectionMethod = @{}
@@ -85,7 +95,7 @@ function Set-Environment($Environment, $Path, $Site){
   }
 
   # Fetch Credentials
-  Set-CredentialTargets
+  Set-CredentialTargets "$($Path)"
 
   $global:siteUrlTarget = $global:jsonsiteSettings.spurlTarget
   $global:relativeWebTarget = ""
@@ -97,9 +107,13 @@ function Set-Environment($Environment, $Path, $Site){
 }
 
 
-function Set-CredentialTargets () {
-  $global:dstCred = Get-PnPStoredCredential -Name "$($global:jsonenvironmentMisc.credentialTarget)" -Type PSCredential
-  $global:dstGraphCred = Get-PnPStoredCredential -Name "$($global:jsonenvironmentMisc.credentialGraphTarget)" -Type PSCredential
+function Set-CredentialTargets([string]$RootPath) {
+  # Get Credentials for Local Machine Execution
+  if ($IsWindows) {
+    $global:dstCred = Get-PnPStoredCredential -Name "$($global:jsonenvironmentMisc.credentialTarget)"
+    $global:dstGraphCred = Get-PnPStoredCredential -Name "$($global:jsonenvironmentMisc.credentialGraphTarget)"
+  }
+  # Get Credentials for Azure DevOps Pipeline Execution
   if ($env:DSTCREDS_USERNAME) {
     #Write-Host "Set Pipeline Cred Properties: $env:DSTCREDS_USERNAME"
     $username = $env:DSTCREDS_USERNAME
@@ -112,19 +126,27 @@ function Set-CredentialTargets () {
     #Write-Host "Set Pipeline Cert Properties: $env:DSTCREDS_CLIENTID"
     $clientid = $env:DSTCREDS_CLIENTID
     $thumb = "$env:DSTCREDS_THUMB"
+    $pfxpass = "$env:DSTCREDS_PFXPASS"
     $secret = "$env:DSTCREDS_SECRET"
     $thumbsecret = $secret
-    if ($thumb) {
-      $thumbsecret = $thumb + "|" + $thumbsecret
+    if ($thumb -or $pfxpass) {
+      $thumbsecret = $thumb + "|" + $pfxpass + "|" + $secret
     }
     $secstr2 = New-Object -TypeName System.Security.SecureString
     $thumbsecret.ToCharArray() | ForEach-Object { $secstr2.AppendChar($_) }
     $global:dstGraphCred = New-Object -TypeName System.Management.Automation.PSCredential -argumentlist $clientid, $secstr2
+    [string]$global:dstGraphCredCertPfxFilePath = "$($env:DSTCREDS_PFXFILE)"
   }
+  else {
+    [string]$global:dstGraphCredCertPfxFilePath = (Get-ChildItem -LiteralPath "$($RootPath)$($global:jsonenvironmentMain.customerPrefix.toLower())-$($global:dstGraphCred.UserName)-$Environment.pfx").FullName
+  }
+  # Setting Global Credential Variables
   [string]$global:dstGraphCredSecret = "$($global:dstGraphCred.GetNetworkCredential().Password)"
-  if ($global:dstGraphCred.GetNetworkCredential().Password.Split('|')[1]) {
+  if ($global:dstGraphCred.GetNetworkCredential().Password.Split('|').Count -eq 3) {
     [string]$global:dstGraphCredCertThumb = "$($global:dstGraphCred.GetNetworkCredential().Password.Split('|')[0])"
-    [string]$global:dstGraphCredSecret = "$($global:dstGraphCred.GetNetworkCredential().Password.Split('|')[1])"
+    [string]$global:dstGraphCredCertPfxPasswordPlain = $global:dstGraphCred.GetNetworkCredential().Password.Split('|')[1]
+    [securestring]$global:dstGraphCredCertPfxPassword = ConvertTo-SecureString -String "$($global:dstGraphCred.GetNetworkCredential().Password.Split('|')[1])" -AsPlainText -Force
+    [string]$global:dstGraphCredSecret = "$($global:dstGraphCred.GetNetworkCredential().Password.Split('|')[2])"
   }
 }
 
@@ -150,16 +172,32 @@ function Connect-PnPSpo([object]$properties) {
   try {
     switch ($properties.AuthSchemeType) {
       "Cred" {
-        Write-Host "Connecting to site $siteurl as $($global:dstCred.UserName)" -ForegroundColor "Green"
-        Connect-PnPOnline -Url $siteurl -Credentials $global:dstCred -SkipTenantAdminCheck -IgnoreSslErrors -RetryCount 3 -RetryWait 5 -NoTelemetry -WarningAction SilentlyContinue -ErrorAction Stop
+        if ($global:dstCred.UserName) {
+          Write-Host "Connecting to site $siteurl as $($global:dstCred.UserName)" -ForegroundColor "Green"
+          Connect-PnPOnline -Url $siteurl -Credentials $global:dstCred -NoTelemetry -WarningAction SilentlyContinue -ErrorAction Stop
+          # -SkipTenantAdminCheck -IgnoreSslErrors -RetryCount 3 -RetryWait 5
+        }
+        else {
+          throw
+        }
       }
-      "Cert" {
+      "Thumb" {
         if ($global:dstGraphCredCertThumb) {
-          Write-Host "Connecting to site $siteurl as $($global:dstGraphCred.UserName)" -ForegroundColor "Green"
-          Connect-PnPOnline -Url $siteurl -Tenant $global:jsonenvironmentMain.customerO365GroupsAcceptedEmailDomain -ClientId "$($global:dstGraphCred.Username)" -Thumbprint $global:dstGraphCredCertThumb -SkipTenantAdminCheck -IgnoreSslErrors -RetryCount 3 -RetryWait 5 -NoTelemetry -WarningAction SilentlyContinue -ErrorAction Stop
+          Write-Host "Connecting to site $siteurl as $($global:dstGraphCred.UserName) with Certificate Thumbprint" -ForegroundColor "Green"
+          Connect-PnPOnline -Url $siteurl -Tenant $global:jsonenvironmentMain.customerO365GroupsAcceptedEmailDomain -ClientId "$($global:dstGraphCred.Username)" -Thumbprint $global:dstGraphCredCertThumb -WarningAction SilentlyContinue -ErrorAction Stop
         }
         else {
           Write-Host "No valid 'Certificate Thumbprint' detected. Exiting..."
+          exit
+        }
+      }
+      "PfxFile" {
+        if ($global:dstGraphCredCertPfxFilePath) {
+          Write-Host "Connecting to site $siteurl as $($global:dstGraphCred.UserName) with Certificate Pfx File" -ForegroundColor "Green"
+          Connect-PnPOnline -Url $siteurl -Tenant $global:jsonenvironmentMain.customerO365GroupsAcceptedEmailDomain -ClientId "$($global:dstGraphCred.Username)" -CertificatePath "$($global:dstGraphCredCertPfxFilePath)" -CertificatePassword $global:dstGraphCredCertPfxPassword -WarningAction SilentlyContinue -ErrorAction Stop
+        }
+        else {
+          Write-Host "No valid 'Certificate Pfx File' detected. Exiting..."
           exit
         }
       }
@@ -170,14 +208,34 @@ function Connect-PnPSpo([object]$properties) {
     }
   }
   catch {
-    Write-Host "Error connecting to $($siteurl): $($Error[0].ToString())" -ForegroundColor "Red"
+    Write-Host " ...Failed, trying alternate method..." -ForegroundColor "Yellow"
     $Error.Clear()
-    return
+    try {
+      if ($properties.AuthSchemeType -eq "Cred") {
+        Write-Host "Connecting to site $siteurl with default web credentials" -ForegroundColor "Green"
+        if ($PSversionTable.PSVersion.Major -ge 6) {
+          Connect-PnPOnline -Url $siteurl -UseWebLogin -ForceAuthentication -WarningAction SilentlyContinue -ErrorAction Stop
+        }
+        else {
+          Connect-PnPOnline -Url $siteurl -UseWebLogin -NoTelemetry -WarningAction SilentlyContinue -ErrorAction Stop
+        }
+      }
+      else {
+        Write-Host "Error connecting to $($siteurl): $($Error[0].ToString())" -ForegroundColor "Red"
+        $Error.Clear()
+        return
+      }
+    }
+    catch {
+      Write-Host "Error connecting to $($siteurl): $($Error[0].ToString())" -ForegroundColor "Red"
+      $Error.Clear()
+      return
+    }
   }
   if (-not (Get-PnPContext)) {
     Write-Host "Error connecting to $($siteurl), unable to establish context" -ForegroundColor "Red"
     $Error.Clear()
-    exit
+    return
   }
   else {
     try {
