@@ -32,7 +32,7 @@ stages:
   jobs:
   - job: build_CI
     pool:
-      vmImage: 'windows-latest'
+      vmImage: 'ubuntu-latest'
     steps:
     - publish: $(System.DefaultWorkingDirectory)
       artifact: drop
@@ -43,7 +43,7 @@ stages:
   jobs:
   - deployment: deploy_PROD
     pool:
-      vmImage: 'windows-latest'
+      vmImage: 'ubuntu-latest'
     environment: 'microsoft-365-GULM'
     strategy:
       runOnce:
@@ -54,28 +54,43 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
+                # Install Package Provider
                 Install-PackageProvider -Name NuGet -Scope CurrentUser -Force -ForceBootstrap
-                Install-Module -Name Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser -SkipPublisherCheck -Verbose -Force
-                Install-Module -Name SharePointPnPPowerShellOnline -Scope CurrentUser -RequiredVersion 3.23.2007.1 -AllowClobber -SkipPublisherCheck -Force -Verbose
-                Install-Module -Name AzureADPreview -Scope "CurrentUser" -SkipPublisherCheck -Verbose -Force
-                Install-Module -Name ExchangeOnlineManagement -AllowPrerelease -Scope "CurrentUser" -MinimumVersion 2.0.3-Preview -Verbose -Force
+                # Install PnP.PowerShell
+                $PnpModuleVersion = "1.10.0"
+                Install-Module -Name PnP.PowerShell -Scope "CurrentUser" -RequiredVersion $PnpModuleVersion -AllowClobber -Repository 'PSGallery' -Verbose -Force
+                # Install EasyGraph
+                $EasyGraphModuleVersion = "1.3.0"
+                Install-Module -Name EasyGraph -Scope "CurrentUser" -RequiredVersion $EasyGraphModuleVersion -AllowClobber -Repository 'PSGallery' -Verbose -Force
+                # Install ExchangeOnlineManagement
+                $ExoModuleVersion = "2.0.6-Preview6"
+                $ExoModuleVersionPath = $ExoModuleVersion.Split('-')[0]
+                Find-Module ExchangeOnlineManagement | Install-Module -Scope "CurrentUser" -RequiredVersion $ExoModuleVersion -AllowPrerelease -AllowClobber -Repository 'PSGallery' -Verbose -Force
+                # Fix DLL conflicts
+                try {
+                  # FILES: Microsoft.Identity.Client.dll, Microsoft.IdentityModel.JsonWebTokens.dll, Microsoft.IdentityModel.Logging.dll, Microsoft.IdentityModel.Tokens.dll
+                  $userDirPath = $($env:PSModulePath -split ";" -match $env:USERNAME | Select -First 1)
+                  if (!$IsWindows) {
+                    $userDirPath = $($env:PSModulePath -split ":" -match $env:USERNAME | Select -First 1)
+                  }
+                  Copy-Item -Path "$($userDirPath)/PnP.PowerShell/$PnpModuleVersion/Core/Microsoft.Identity.Client.dll" -Destination "$($userDirPath)/ExchangeOnlineManagement/$ExoModuleVersionPath/netCore/" -Force -ErrorAction Stop
+                  Copy-Item -Path "$($userDirPath)/PnP.PowerShell/$PnpModuleVersion/Core/Microsoft.IdentityModel.JsonWebTokens.dll" -Destination "$($userDirPath)/ExchangeOnlineManagement/$ExoModuleVersionPath/netCore/" -Force -ErrorAction Stop
+                  Copy-Item -Path "$($userDirPath)/PnP.PowerShell/$PnpModuleVersion/Core/Microsoft.IdentityModel.Logging.dll" -Destination "$($userDirPath)/ExchangeOnlineManagement/$ExoModuleVersionPath/netCore/" -Force -ErrorAction Stop
+                  Copy-Item -Path "$($userDirPath)/PnP.PowerShell/$PnpModuleVersion/Core/Microsoft.IdentityModel.Tokens.dll" -Destination "$($userDirPath)/ExchangeOnlineManagement/$ExoModuleVersionPath/netCore/" -Force -ErrorAction Stop
+                }
+                catch {
+                  Write-Host "Failed to copy module DLLs from path '$userDirPath/PnP.PowerShell/$PnpModuleVersion/Core/' to PS CurrentUser Scope path '$userDirPath/ExchangeOnlineManagement/$ExoModuleVersionPath/netCore/'"
+                  Write-Host "$($Error[0].ToString())"
+                }
+                # Install PSWSMan
+                if ( $env:AGENT_OS -and $env:AGENT_OS -ne "Windows_NT" ) { Install-Module -Name PSWSMan -Scope "CurrentUser" -Verbose -Force; Install-WSMan -Verbose }
               errorActionPreference: 'silentlyContinue'
+              pwsh: true
           - task: DownloadSecureFile@1 # Download a secure file to the agent machine
             displayName: 'Download Certificate'
             name: mycert # The name with which to reference the secure file's path on the agent, like $(mySecureFile.secureFilePath)
             inputs:
-              secureFile: fhq-a4dc3538-a0cd-41c9-8905-81522564f979-PROD.pfx # The file name or GUID of the secure file
-            condition: ne(variables['DSTCREDS_PFXPASS'], '')
-            env:
-              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group
-          - task: PowerShell@2
-            displayName: 'Import Certificate'
-            inputs:
-              targetType: 'inline'
-              script: |
-                $Pwd = ConvertTo-SecureString -String $env:DSTCREDS_PFXPASS -Force -AsPlainText
-                $Thumbprint = (Import-PfxCertificate -CertStoreLocation Cert:\CurrentUser\My -FilePath $(mycert.secureFilePath) -Password $Pwd).Thumbprint
-              errorActionPreference: 'silentlyContinue'
+              secureFile: MC-00000000-0000-0000-0000-000000000000-PROD.pfx # The file name or GUID of the secure file
             condition: ne(variables['DSTCREDS_PFXPASS'], '')
             env:
               DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group
@@ -85,11 +100,13 @@ stages:
           - task: PowerShell@2
             displayName: 'Run Deploy Script'
             inputs:
-              targetType: filePath
-              filePath: '$(Pipeline.Workspace)/drop/Scripts/O365/3. Governance/_GuestUserLifeCycleManagement/Apply-GuestUserLifeCycle.ps1'
+              filePath: '$(Pipeline.Workspace)/drop/Scripts/M365/3. Governance/_GuestUserLifeCycleManagement/Apply-GuestUserLifeCycle.ps1'
               errorActionPreference: silentlyContinue
-              workingDirectory: '$(Pipeline.Workspace)/drop/Scripts/O365/3. Governance/_GuestUserLifeCycleManagement'
+              pwsh: true
+              workingDirectory: '$(Pipeline.Workspace)/drop/Scripts/M365/3. Governance/_GuestUserLifeCycleManagement'
             env:
               DSTCREDS_PASSWORD: $(DSTCREDS_PASSWORD) # Maps the secret variable $(DSTCREDS_PASSWORD) from 'M365-PROD-environment-variables' group
-              DSTCREDS_THUMB: $(DSTCREDS_THUMB) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group
-              DSTCREDS_SECRET: $(DSTCREDS_SECRET) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group
+              DSTCREDS_THUMB: $(DSTCREDS_THUMB) # Maps the secret variable $(DSTCREDS_THUMB) from 'M365-PROD-environment-variables' group
+              DSTCREDS_SECRET: $(DSTCREDS_SECRET) # Maps the secret variable $(DSTCREDS_SECRET) from 'M365-PROD-environment-variables' group
+              DSTCREDS_PFXFILE: $(mycert.secureFilePath) # Maps the secure file path from DownloadSecureFile task
+              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group

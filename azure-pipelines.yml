@@ -29,7 +29,7 @@ stages:
   jobs:
   - job: build_CI
     pool:
-      vmImage: 'windows-latest'
+      vmImage: 'ubuntu-latest'
     steps:
     - script: |
         echo hello world from %MyName%
@@ -47,10 +47,17 @@ stages:
         MyName: $(Agent.MachineName)
       condition: and(succeeded(), in(variables['agent.os'], 'darwin', 'linux'))
       displayName: Greeting from macOS or Linux machine
-    - powershell: |
-        Write-Host "Hello from PowerShell v$($PSVersionTable.PSVersion.Major)"
-      workingDirectory: $(Agent.HomeDirectory)
-      displayName: Greeting from Powershell
+    - task: PowerShell@2
+      displayName: 'Greeting from Powershell'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Hello from PowerShell v$($PSVersionTable.PSVersion.Major)"
+        errorActionPreference: 'silentlyContinue'
+        workingDirectory: $(Agent.HomeDirectory)
+        pwsh: true
+      env:
+        MyName: $(Agent.MachineName)
     - publish: $(System.DefaultWorkingDirectory)
       artifact: drop
 
@@ -62,7 +69,7 @@ stages:
   jobs:
   - deployment: deploy_TEST
     pool:
-      vmImage: 'windows-latest'
+      vmImage: 'ubuntu-latest'
     environment: 'microsoft-365-TEST'
     strategy:
       runOnce:
@@ -73,26 +80,20 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
+                # Install Package Provider
                 Install-PackageProvider -Name NuGet -Scope CurrentUser -Force -ForceBootstrap
-                Install-Module -Name Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser -SkipPublisherCheck -Verbose -Force
-                Install-Module -Name SharePointPnPPowerShellOnline -Scope CurrentUser -RequiredVersion 3.23.2007.1 -AllowClobber -SkipPublisherCheck -Force -Verbose
+                # Install PnP.PowerShell
+                $PnpModuleVersion = "1.10.0"
+                Install-Module -Name PnP.PowerShell -Scope "CurrentUser" -RequiredVersion $PnpModuleVersion -AllowClobber -Repository 'PSGallery' -Verbose -Force
+                # Install PSWSMan
+                if ( $env:AGENT_OS -and $env:AGENT_OS -ne "Windows_NT" ) { Install-Module -Name PSWSMan -Scope "CurrentUser" -Verbose -Force; Install-WSMan -Verbose }
               errorActionPreference: 'silentlyContinue'
+              pwsh: true
           - task: DownloadSecureFile@1 # Download a secure file to the agent machine
             displayName: 'Download Certificate'
             name: mycert # The name with which to reference the secure file's path on the agent, like $(mySecureFile.secureFilePath)
             inputs:
               secureFile: "[ORGANIZATION PREFIX]-[CLIENTID]-[ENVIRONMENT].pfx" # The file name or GUID of the secure file
-            condition: ne(variables['DSTCREDS_PFXPASS'], '')
-            env:
-              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
-          - task: PowerShell@2
-            displayName: 'Import Certificate'
-            inputs:
-              targetType: 'inline'
-              script: |
-                $Pwd = ConvertTo-SecureString -String $env:DSTCREDS_PFXPASS -Force -AsPlainText
-                $Thumbprint = (Import-PfxCertificate -CertStoreLocation Cert:\CurrentUser\My -FilePath $(mycert.secureFilePath) -Password $Pwd).Thumbprint
-              errorActionPreference: 'silentlyContinue'
             condition: ne(variables['DSTCREDS_PFXPASS'], '')
             env:
               DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
@@ -105,11 +106,14 @@ stages:
               targetType: filePath
               filePath: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment/Test-Deployment.ps1'
               errorActionPreference: silentlyContinue
+              pwsh: true
               workingDirectory: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment'
             env:
               DSTCREDS_PASSWORD: $(DSTCREDS_PASSWORD) # Maps the secret variable $(DSTCREDS_PASSWORD) from 'M365-TEST-environment-variables' group
-              DSTCREDS_THUMB: $(DSTCREDS_THUMB) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
-              DSTCREDS_SECRET: $(DSTCREDS_SECRET) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
+              DSTCREDS_THUMB: $(DSTCREDS_THUMB) # Maps the secret variable $(DSTCREDS_THUMB) from 'M365-TEST-environment-variables' group
+              DSTCREDS_SECRET: $(DSTCREDS_SECRET) # Maps the secret variable $(DSTCREDS_SECRET) from 'M365-TEST-environment-variables' group
+              DSTCREDS_PFXFILE: $(mycert.secureFilePath) # Maps the secure file path from DownloadSecureFile task
+              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
 
 - stage: deploy_PROD
   variables:
@@ -119,7 +123,7 @@ stages:
   jobs:
   - deployment: deploy_PROD
     pool:
-      vmImage: 'windows-latest'
+      vmImage: 'ubuntu-latest'
     environment: 'microsoft-365-PROD'
     strategy:
       runOnce:
@@ -130,10 +134,15 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
+                # Install Package Provider
                 Install-PackageProvider -Name NuGet -Scope CurrentUser -Force -ForceBootstrap
-                Install-Module -Name Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser -SkipPublisherCheck -Verbose -Force
-                Install-Module -Name SharePointPnPPowerShellOnline -Scope CurrentUser -RequiredVersion 3.23.2007.1 -AllowClobber -SkipPublisherCheck -Force -Verbose
+                # Install PnP.PowerShell
+                $PnpModuleVersion = "1.10.0"
+                Install-Module -Name PnP.PowerShell -Scope "CurrentUser" -RequiredVersion $PnpModuleVersion -AllowClobber -Repository 'PSGallery' -Verbose -Force
+                # Install PSWSMan
+                if ( $env:AGENT_OS -and $env:AGENT_OS -ne "Windows_NT" ) { Install-Module -Name PSWSMan -Scope "CurrentUser" -Verbose -Force; Install-WSMan -Verbose }
               errorActionPreference: 'silentlyContinue'
+              pwsh: true
           - task: DownloadSecureFile@1 # Download a secure file to the agent machine
             displayName: 'Download Certificate'
             name: mycert # The name with which to reference the secure file's path on the agent, like $(mySecureFile.secureFilePath)
@@ -141,18 +150,7 @@ stages:
               secureFile: "[ORGANIZATION PREFIX]-[CLIENTID]-[ENVIRONMENT].pfx" # The file name or GUID of the secure file
             condition: ne(variables['DSTCREDS_PFXPASS'], '')
             env:
-              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
-          - task: PowerShell@2
-            displayName: 'Import Certificate'
-            inputs:
-              targetType: 'inline'
-              script: |
-                $Pwd = ConvertTo-SecureString -String $env:DSTCREDS_PFXPASS -Force -AsPlainText
-                $Thumbprint = (Import-PfxCertificate -CertStoreLocation Cert:\CurrentUser\My -FilePath $(mycert.secureFilePath) -Password $Pwd).Thumbprint
-              errorActionPreference: 'silentlyContinue'
-            condition: ne(variables['DSTCREDS_PFXPASS'], '')
-            env:
-              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
+              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group
           - download: current
             displayName: 'Download Artifact'
             artifact: drop
@@ -162,11 +160,14 @@ stages:
               targetType: filePath
               filePath: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment/Test-Deployment.ps1'
               errorActionPreference: silentlyContinue
+              pwsh: true
               workingDirectory: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment'
             env:
-              DSTCREDS_PASSWORD: $(DSTCREDS_PASSWORD) # Maps the secret variable $(DSTCREDS_PASSWORD) from 'M365-TEST-environment-variables' group
-              DSTCREDS_THUMB: $(DSTCREDS_THUMB) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
-              DSTCREDS_SECRET: $(DSTCREDS_SECRET) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-TEST-environment-variables' group
+              DSTCREDS_PASSWORD: $(DSTCREDS_PASSWORD) # Maps the secret variable $(DSTCREDS_PASSWORD) from 'M365-PROD-environment-variables' group
+              DSTCREDS_THUMB: $(DSTCREDS_THUMB) # Maps the secret variable $(DSTCREDS_THUMB) from 'M365-PROD-environment-variables' group
+              DSTCREDS_SECRET: $(DSTCREDS_SECRET) # Maps the secret variable $(DSTCREDS_SECRET) from 'M365-PROD-environment-variables' group
+              DSTCREDS_PFXFILE: $(mycert.secureFilePath) # Maps the secure file path from DownloadSecureFile task
+              DSTCREDS_PFXPASS: $(DSTCREDS_PFXPASS) # Maps the secret variable $(DSTCREDS_PFXPASS) from 'M365-PROD-environment-variables' group
           - task: git-tag-on-release-task@9
             displayName: 'Tag Artifacts'
             inputs:
@@ -175,7 +176,7 @@ stages:
           - task: XplatGenerateReleaseNotes@3
             displayName: 'Generate Release Notes'
             inputs:
-              outputfile: '$(Pipeline.Workspace)\releasenotes.md'
+              outputfile: '$(Pipeline.Workspace)/releasenotes.md'
               templateLocation: 'File'
               templatefile: '$(Pipeline.Workspace)/drop/Scripts/M365/6. Deployment/release-notes-template.hbs'
               checkStage: true
@@ -187,12 +188,14 @@ stages:
             displayName: 'Add Release Notes to Wiki'
             inputs:
               repo: 'dev.azure.com/[ORGANIZATION]/[PROJECT]/_git/[PROJECT].wiki'
-              filename: 'Microsoft-365\Release-Notes-$(Build.BuildId).md'
+              filename: 'Microsoft-365/Release-Notes-$(Build.BuildId).md'
               replaceFile: true
               dataIsFile: true
-              sourceFile: '$(Pipeline.Workspace)\releasenotes.md'
+              sourceFile: '$(Pipeline.Workspace)/releasenotes.md'
               message: 'Release notes created by pipeline process'
               gitname: '$(Build.RequestedFor)'
               gitemail: '$(Build.RequestedForEmail)'
               useAgentToken: true
-              localpath: '$(Pipeline.Workspace)\repo'
+              localpath: '$(Pipeline.Workspace)/repo'
+              updateOrderFile: true
+              prependEntryToOrderFile: true
