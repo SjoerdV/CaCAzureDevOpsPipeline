@@ -48,89 +48,141 @@ $RepoRootLevel = "$O365ScriptRootLevel..\..\"
 Set-Environment $Environment "$($O365ScriptRootLevel)" "Root"
 
 #Load Helper Functions
-. "$($O365ScriptRootLevel)Powershell-HelperFunctions.ps1"
-. "$($O365ScriptRootLevel)AzureAd-HelperFunctions.ps1"
-. "$($O365ScriptRootLevel)PnP-HelperFunctions.ps1"
+. "$($O365ScriptRootLevel)..\Powershell-HelperFunctions.ps1"
+. "$($O365ScriptRootLevel)Az-HelperFunctions.ps1"
 
 #Do Stuff
 #------------------------------------------------------------------------
-# Connect to Azure AD
-Connect-Aad "Cred"
+# Connect to Az
+$global:ServiceConnectionMethod.Az.AuthSchemeType = "Cred"
+Connect-Az $global:ServiceConnectionMethod.Az
 
-
-# Define Classes
-class ResourceAccess {
-  [System.String]$Id
-  [System.String]$Type
-}
-
-class RequiredResourceAccess {
-  [System.String]$ResourceAppId
-  [System.Collections.Generic.List[Microsoft.Open.AzureAD.Model.ResourceAccess]]$ResourceAccess
-}
-
-class root {
-  [System.Collections.Generic.List[Microsoft.Open.AzureAD.Model.RequiredResourceAccess]]$RequiredResourceAccess
-}
-
-
-# Add App Principals
-$SessionInfo = Get-AzureADCurrentSessionInfo
 
 $appdefinitions = $global:jsonenvironmentMisc.AzureAppsAndPrincipals
 foreach ($appdefinition in $appdefinitions) {
+  # Add or Update App Principals
+
   $secret = $null
   $certthumb = $null
   $pfxpwd = $null
-  $app = Get-AzureADApplication | Where-Object { $_.DisplayName -eq "$($appdefinition.AppName)" }
-  $spn = Get-AzureADServicePrincipal -All $true | Where-Object { $_.AppId -eq "$($app.AppId)" }
-  $AppAccess = [System.Web.Script.Serialization.JavaScriptSerializer]::new().Deserialize((ConvertTo-Json -Depth 100 -InputObject @($appdefinition.AppSettings.RequiredResourceAccess)), [Microsoft.Open.AzureAD.Model.RequiredResourceAccess[]])
-  if (!$app.DisplayName) {
+  $skipped = $false
+  $app = (az ad app list --display-name "$($appdefinition.AppName)" | ConvertFrom-Cli)
+  [array]$AppAccess = @()
+  [array]$AppAccess += $($appdefinition.AppSettings.RequiredResourceAccess)
+  $AppAccessJson = (ConvertTo-Json $AppAccess -Depth 10 -Compress) > ".temp-body.json"
+  if (!$app.displayName) {
     Write-Host "Creating the Azure AD application and related resources..."
     if ($AppAccess.Count -gt 0) {
-      $app = New-AzureADApplication -AvailableToOtherTenants $appdefinition.AppSettings.AvailableToOtherTenants -DisplayName "$($appdefinition.AppName)" -IdentifierUris "https://$($SessionInfo.TenantDomain)/$((New-Guid).ToString())" -RequiredResourceAccess $appAccess -ReplyUrls @("urn:ietf:wg:oauth:2.0:oob")
-      $secret = New-AzureADApplicationPasswordCredential -ObjectId $app.ObjectId -CustomKeyIdentifier "MySecret"
+      $app = (az ad app create --display-name "$($appdefinition.AppName)" --sign-in-audience "$($appdefinition.AppSettings.SignInAudience)" --required-resource-accesses "@.temp-body.json" | ConvertFrom-Cli)
+      $secret = (az ad app credential reset --id $app.appId | ConvertFrom-Cli).password
       if ($appdefinition.AppSettings.AuthenticationScheme -ne "Secret") {
         $out = New-AppSelfsignedCertificate $app
         $certthumb = $out.CertThumb
         $pfxpwd = $out.PfxPassword
       }
-      $spn = New-AzureADServicePrincipal -AppId $app.AppId -DisplayName "$($appdefinition.AppName)" -Tags @($appdefinition.AppSettings.ServicePrincipal.Tags.Name)
+      $spn = (az ad sp create --id $app.appId | ConvertFrom-Cli)
+      $spn = (az ad sp show --id $app.appId | ConvertFrom-Cli)
+      # Start - Add Tags. Known issue: https://github.com/Azure/azure-cli/issues/23027
+      try {
+        #$updspn = (az ad sp update --id $spn.id --add tags $tag | ConvertFrom-Cli)
+        [object]$TagConfig = $appdefinition.AppSettings.ServicePrincipal.TagConfig
+        $TagConfigJson = (ConvertTo-Json $TagConfig -Depth 10 -Compress) > ".temp-body-tags.json"
+        $updspn = (az rest --method PATCH --url https://graph.microsoft.com/v1.0/servicePrincipals/$($spn.id) --body "@.temp-body-tags.json" | ConvertFrom-Cli)
+      }
+      catch {
+        Write-Host "Failed to update App Tags. Skipping..."
+      }
+      # End - Add Tags.
+      $updapp = (az ad app update --id $app.appId --web-redirect-uris @("https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/Overview/appId/$($app.appId)/isMSAApp/") | ConvertFrom-Cli)
       Write-Host "Done!"
     }
     else {
-      Write-Host "The App Resource Access grants were not loaded. Probably their is an issue with the provided JSON. Exiting...!" -ForegroundColor "Red"
+      Write-Host "The App Resource Access grants were not loaded. Probably there is an issue with the provided JSON. Exiting...!" -ForegroundColor "Red"
       exit
     }
   }
   else {
-    Write-Host "App Principal already exist. Updating..."
-    if ($appdefinition.AppSettings.AuthenticationScheme -ne "Secret") {
-      $Confirm = Read-Host "You are updating the app with id '$($app.AppId)'. Do you wish to generate a new certificate (Y/N)?"
+    Write-Host "App Principal already exist."
+    $Confirm = Read-Host "Do you wish to update the app with id '$($app.appId)' (Y/N)?"
+    if($Confirm -match "[y]") {
+      Write-Host "Updating..."
+      $Confirm = $null; $Confirm = Read-Host "You are updating the app with id '$($app.appId)'. Do you wish to generate a new clientsecret (Y/N)?"
       if($Confirm -match "[y]") {
-        $out = New-AppSelfsignedCertificate $app
-        $certthumb = $out.CertThumb
-        $pfxpwd = $out.PfxPassword
+        $secret = (az ad app credential reset --id $app.appId | ConvertFrom-Cli).password
+      }
+      if ($appdefinition.AppSettings.AuthenticationScheme -ne "Secret") {
+        $Confirm = Read-Host "You are updating the app with id '$($app.appId)'. Do you wish to generate a new certificate (Y/N)?"
+        if($Confirm -match "[y]") {
+          $out = New-AppSelfsignedCertificate $app
+          $certthumb = $out.CertThumb
+          $pfxpwd = $out.PfxPassword
+        }
+      }
+      $spn = (az ad sp show --id $app.appId | ConvertFrom-Cli)
+      # Start - Add Tags. Known issue: https://github.com/Azure/azure-cli/issues/23027
+      try {
+        #$updspn = (az ad sp update --id $spn.id --add tags $tag | ConvertFrom-Cli)
+        [object]$TagConfig = $appdefinition.AppSettings.ServicePrincipal.TagConfig
+        $TagConfigJson = (ConvertTo-Json $TagConfig -Depth 10 -Compress) > ".temp-body-tags.json"
+        $updspn = (az rest --method PATCH --url https://graph.microsoft.com/v1.0/servicePrincipals/$($spn.id) --body "@.temp-body-tags.json" | ConvertFrom-Cli)
+      }
+      catch {
+        Write-Host "Failed to update App Tags. Skipping..."
+      }
+      # End - Add Tags.
+      Start-Sleep 5
+      $updapp = (az ad app update --id $app.appId --display-name "$($appdefinition.AppName)" --sign-in-audience "$($appdefinition.AppSettings.SignInAudience)" --required-resource-accesses "@.temp-body.json" | ConvertFrom-Cli)
+      Start-Sleep 5
+      $updapp = (az ad app update --id $app.appId --web-redirect-uris @("https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/Overview/appId/$($app.appId)/isMSAApp/") | ConvertFrom-Cli)
+      Write-Host "Done!"
+    }
+    else {
+      Write-Host "Skipping..."
+      $skipped = $true
+    }
+  }
+  if (!$skipped) {
+    # Add SPN to Azure roles
+    foreach ($RoleMemberShip in $appdefinition.AppSettings.ServicePrincipal.RoleMemberShips) {
+      try {
+        Write-Host "Adding App Principal '$($spn.id)' to Azure role '$($RoleMemberShip.DisplayName)'..."
+        # elevatate account
+        az rest --method post --url "/providers/Microsoft.Authorization/elevateAccess?api-version=2016-07-01"
+        # add Azure AD role
+        $body = @{
+          "roleDefinitionId" = "$($RoleMemberShip.Id)";
+          "principalId"      = "$($spn.id)";
+          "directoryScopeId" = "/"
+        } | ConvertTo-Json -Compress
+        $body = $body.Replace('"', '\"')
+        $role = (az rest -m post -u "https://graph.microsoft.com/beta/roleManagement/directory/roleAssignments" -b "$body" | ConvertFrom-Cli)
+        # remove account elevation
+        az role assignment delete --assignee $global:dstCred.UserName --role "User Access Administrator" --scope "/"
+        Write-Host "Done!"
+      }
+      catch {
+        if ($Error[0].Exception.Message -notmatch "already exist") {
+          Write-Host "Adding App Principal '$($spn.id)' to role '$($RoleMemberShip.DisplayName)' failed: $($Error[0].ToString())" -ForegroundColor "Red"
+        }
       }
     }
-    Set-AzureADApplication -ObjectId $app.ObjectId -AvailableToOtherTenants $appdefinition.AppSettings.AvailableToOtherTenants -DisplayName "$($appdefinition.AppName)" -RequiredResourceAccess $appAccess -ReplyUrls @("urn:ietf:wg:oauth:2.0:oob")
-    Set-AzureADServicePrincipal -ObjectId $spn.ObjectId -AppId $app.AppId -DisplayName "$($appdefinition.AppName)" -Tags @($appdefinition.AppSettings.ServicePrincipal.Tags.Name)
+    # Consent App Permissions
+    Write-Host "Consenting App '$($app.appId)' Permissions..."
+    $app = (az ad app list --display-name "$($appdefinition.AppName)" | ConvertFrom-Cli)
+    $consent = (Start-RetryScriptBlock -ScriptBlock { (az ad app permission admin-consent --id $app.appId | ConvertFrom-Cli) } -Retries 5 -SecondsDelay 5 -Indent " ")
+    Write-Host "Done!"
+    ## Print results
+    Write-Host "================ Secrets ================"
+    Write-Host "AppDisplayName              = $($app.displayName)"
+    Write-Host "ApplicationId               = $($app.appId)"
+    if ($appdefinition.AppSettings.AuthenticationScheme -ne "Secret") {
+      Write-Host "ApplicationCertThumb        = $(if ($certthumb) { $certthumb } else { "CERT THUMBPRINT ALREADY DOCUMENTED" } )"
+      Write-Host "ApplicationPfxPassword      = $(if ($pfxpwd) { $pfxpwd } else { "PFX PASSWORD ALREADY DOCUMENTED" } )"
+    }
+    Write-Host "ApplicationSecret           = $(if ($secret) { $secret } else { "CLIENT SECRET ALREADY DOCUMENTED" } )"
+    Write-Host "TenantName                  = $($global:jsonenvironmentMain.customerO365GroupsAcceptedEmailDomain)"
+    Write-Host "TenantID                    = $($global:jsonenvironmentMisc.AzureADTenantId)"
+    Write-Host "================ Secrets ================"
+    Write-Host "    SAVE THESE IN A SECURE LOCATION     "
   }
-  ## Give consent and print results
-  Write-Host "IMPORTANT: Please browse to https://login.microsoftonline.com/$($spn.AppOwnerTenantID)/adminConsent?client_id=$($app.AppId)" -ForegroundColor "Yellow"
-  Write-Host "Press any key after auth. An error report about incorrect URIs is expected!"
-  [void][System.Console]::ReadKey($true)
-  Write-Host "================ Secrets ================"
-  Write-Host "LinkedCredential            = $($global:jsonenvironmentMisc.credentialGraphTarget)"
-  Write-Host "AppDisplayName              = $($app.DisplayName)"
-  Write-Host "ApplicationId               = $($app.AppId)"
-  Write-Host "ApplicationSecret           = $(if ($secret.Value) { $secret.Value } else { "CLIENT SECRET ALREADY DOCUMENTED" } )"
-  if ($appdefinition.AppSettings.AuthenticationScheme -ne "Secret") {
-    Write-Host "ApplicationCertThumb        = $(if ($certthumb) { $certthumb } else { "CERT THUMBPRINT ALREADY DOCUMENTED" } )"
-    Write-Host "ApplicationPfxPassword      = $(if ($pfxpwd) { $pfxpwd } else { "PFX PASSWORD ALREADY DOCUMENTED" } )"
-  }
-  Write-Host "TenantName                  = $($global:jsonenvironmentMain.customerO365GroupsAcceptedEmailDomain)"
-  Write-Host "TenantID                    = $($spn.AppOwnerTenantID)"
-  Write-Host "================ Secrets ================"
-  Write-Host "    SAVE THESE IN A SECURE LOCATION     "
 }
