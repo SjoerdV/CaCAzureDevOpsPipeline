@@ -61,16 +61,20 @@ Connect-Az $global:ServiceConnectionMethod.Az
 $appdefinitions = $global:jsonenvironmentMisc.AzureAppsAndPrincipals
 foreach ($appdefinition in $appdefinitions) {
   # Add or Update App Principals
-
   $secret = $null
   $certthumb = $null
   $pfxpwd = $null
   $skipped = $false
   $app = (az ad app list --filter "displayname eq '$($appdefinition.AppName)'" | ConvertFrom-Cli)
+  if ($app.Count -gt 1) {
+    Write-Host "Multiple Apps with the same name '$($appdefinition.AppName)' detected. This is not supported. Skipping..." -ForegroundColor "Red"
+    continue
+  }
   [array]$AppAccess = @()
   [array]$AppAccess += $($appdefinition.AppSettings.RequiredResourceAccess)
   $AppAccessJson = (ConvertTo-Json $AppAccess -Depth 10 -Compress) > ".temp-body.json"
   if (!$app.displayName) {
+    # Add App Principal
     Write-Host "Creating the Azure AD application and related resources..."
     if ($AppAccess.Count -gt 0) {
       $app = (az ad app create --display-name "$($appdefinition.AppName)" --sign-in-audience "$($appdefinition.AppSettings.SignInAudience)" --required-resource-accesses "@.temp-body.json" | ConvertFrom-Cli)
@@ -81,20 +85,6 @@ foreach ($appdefinition in $appdefinitions) {
         $pfxpwd = $out.PfxPassword
       }
       $spn = (az ad sp create --id $app.appId | ConvertFrom-Cli)
-      $spn = (az ad sp show --id $app.appId | ConvertFrom-Cli)
-      # Start - Add Tags. Known issue: https://github.com/Azure/azure-cli/issues/23027
-      try {
-        #$updspn = (az ad sp update --id $spn.id --add tags $tag | ConvertFrom-Cli)
-        [object]$TagConfig = $appdefinition.AppSettings.ServicePrincipal.TagConfig
-        $TagConfigJson = (ConvertTo-Json $TagConfig -Depth 10 -Compress) > ".temp-body-tags.json"
-        $updspn = (az rest --method PATCH --url https://graph.microsoft.com/v1.0/servicePrincipals/$($spn.id) --body "@.temp-body-tags.json" | ConvertFrom-Cli)
-      }
-      catch {
-        Write-Host "Failed to update App Tags. Skipping..."
-      }
-      # End - Add Tags.
-      $updapp = (az ad app update --id $app.appId --web-redirect-uris @("https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/Overview/appId/$($app.appId)/isMSAApp/") | ConvertFrom-Cli)
-      Write-Host "Done!"
     }
     else {
       Write-Host "The App Resource Access grants were not loaded. Probably there is an issue with the provided JSON. Exiting...!" -ForegroundColor "Red"
@@ -102,10 +92,12 @@ foreach ($appdefinition in $appdefinitions) {
     }
   }
   else {
+    # Update App Principal
     Write-Host "App Principal already exist."
     $Confirm = Read-Host "Do you wish to update the app with id '$($app.appId)' (Y/N)?"
     if($Confirm -match "[y]") {
       Write-Host "Updating..."
+      $appupd = (az ad app update --id $app.appId --display-name "$($appdefinition.AppName)" --sign-in-audience "$($appdefinition.AppSettings.SignInAudience)" --required-resource-accesses "@.temp-body.json" | ConvertFrom-Cli)
       $Confirm = $null; $Confirm = Read-Host "You are updating the app with id '$($app.appId)'. Do you wish to generate a new clientsecret (Y/N)?"
       if($Confirm -match "[y]") {
         $secret = (az ad app credential reset --id $app.appId | ConvertFrom-Cli).password
@@ -118,23 +110,6 @@ foreach ($appdefinition in $appdefinitions) {
           $pfxpwd = $out.PfxPassword
         }
       }
-      $spn = (az ad sp show --id $app.appId | ConvertFrom-Cli)
-      # Start - Add Tags. Known issue: https://github.com/Azure/azure-cli/issues/23027
-      try {
-        #$updspn = (az ad sp update --id $spn.id --add tags $tag | ConvertFrom-Cli)
-        [object]$TagConfig = $appdefinition.AppSettings.ServicePrincipal.TagConfig
-        $TagConfigJson = (ConvertTo-Json $TagConfig -Depth 10 -Compress) > ".temp-body-tags.json"
-        $updspn = (az rest --method PATCH --url https://graph.microsoft.com/v1.0/servicePrincipals/$($spn.id) --body "@.temp-body-tags.json" | ConvertFrom-Cli)
-      }
-      catch {
-        Write-Host "Failed to update App Tags. Skipping..."
-      }
-      # End - Add Tags.
-      Start-Sleep 5
-      $updapp = (az ad app update --id $app.appId --display-name "$($appdefinition.AppName)" --sign-in-audience "$($appdefinition.AppSettings.SignInAudience)" --required-resource-accesses "@.temp-body.json" | ConvertFrom-Cli)
-      Start-Sleep 5
-      $updapp = (az ad app update --id $app.appId --web-redirect-uris @("https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/Overview/appId/$($app.appId)/isMSAApp/") | ConvertFrom-Cli)
-      Write-Host "Done!"
     }
     else {
       Write-Host "Skipping..."
@@ -142,6 +117,20 @@ foreach ($appdefinition in $appdefinitions) {
     }
   }
   if (!$skipped) {
+    $spn = (az ad sp show --id $app.appId | ConvertFrom-Cli)
+    # Start - Add Tags. Known issue: https://github.com/Azure/azure-cli/issues/23027, could still be optimized after July 5 2022.
+    try {
+      [object]$TagConfig = $appdefinition.AppSettings.ServicePrincipal.TagConfig
+      $TagConfigJson = (ConvertTo-Json $TagConfig.tags -Depth 10 -Compress) > ".temp-body-tags.json"
+      $updspn = az ad sp update --id $spn.id --set tags="@.temp-body-tags.json" | ConvertFrom-Cli
+    }
+    catch {
+      Write-Host "Failed to update App Tags. Skipping..."
+    }
+    # End - Add Tags.
+    Write-Host "Updating App Settings..."
+    $updapp = (az ad app update --id $app.appId --web-redirect-uris @("https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/Overview/appId/$($app.appId)/isMSAApp/") | ConvertFrom-Cli)
+    Write-Host "Done!"
     # Add SPN to Azure roles
     foreach ($RoleMemberShip in $appdefinition.AppSettings.ServicePrincipal.RoleMemberShips) {
       try {
