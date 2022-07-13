@@ -108,30 +108,3 @@ function Connect-Exo([object]$properties) {
     }
   }
 }
-
-
-function Start-WaitOnMailUserAccountDisabledStatus([string]$Upn, [string]$Type, [bool]$Status) {
-  ## Wait for Mail User '$($Upn)' with RecipientTypeDetails equals '$Type' AccountDisabled equals '$Status'
-  try {
-    $MailUser = $null
-    $Index = 1
-    $Max = 30
-    while (!$MailUser -and $Index -le $Max) {
-      $MailUser = Get-User -RecipientTypeDetails $Type -ResultSize Unlimited | Where-Object { $_.AccountDisabled -eq $Status -and $_.UserPrincipalName -eq "$($Upn)" } -ErrorAction Ignore
-      Write-Host "  Waiting for Mail User '$($Upn)' with RecipientTypeDetails equals '$Type' AccountDisabled equals '$Status'..."
-      if ($Index -eq $Max - 10) {
-        Write-Host "  Trying reconnect to Exchange Online..."
-        Connect-Exo $global:ServiceConnectionMethod.Exo
-      }
-      Start-Sleep -Seconds 10
-      $Index++
-    }
-    if (!$MailUser -or $Index -ge $Max) {
-      throw "Mail User '$($Upn)' with RecipientTypeDetails equals '$Type' AccountDisabled equals '$Status' was not found. Terminating..."
-    }
-  }
-  catch {
-    Write-Host "Waiting on Mail User '$($Upn)' with RecipientTypeDetails equals '$Type' AccountDisabled equals '$Status' failed: $($Error[0].ToString())" -ForegroundColor Red
-    exit
-  }
-}

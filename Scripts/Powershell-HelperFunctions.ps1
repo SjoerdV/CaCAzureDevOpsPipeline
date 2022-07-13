@@ -30,37 +30,6 @@ else {
   $global:folderseparator = "/"
 }
 
-
-
-
-function Send-Report([string[]]$mailto, [string]$subject, [string]$body, [string]$file) {
-  try {
-    Write-Host "Sending email"
-    $params = @{}
-    $params['From'] = "$($global:dstCred.UserName)"
-    $params['To'] = $mailto
-    $params['Body'] = $body
-    $params['Subject'] = $subject
-    if ($file.Length -gt 0) {
-      $params['Attachments'] = $file
-    }
-    # Set TLS
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Send-MailMessage `
-      @params `
-      -BodyAsHtml `
-      -Credential $global:dstCred `
-      -UseSsl `
-      -Port '587' `
-      -SmtpServer 'smtp.office365.com' `
-      -EA Stop
-  }
-  catch {
-    Write-Host "Error sending email: $($Error[0].ToString())" -ForegroundColor "Red"
-    return
-  }
-}
-
 <#
 Reference: https://gist.githubusercontent.com/alexbevi/34b700ff7c7c53c7780b/raw/8925255eb7be0cf4db180b79b86a315b1ca1077c/Execute-With-Retry.ps1
 This function can be used to pass a ScriptBlock (closure) to be executed and returned.
