@@ -118,7 +118,7 @@ foreach ($GuestUser in $GuestUsersMG) {
         $body = @{
           accountEnabled = $false
         }
-          # Get endpoint
+        # Get endpoint
         $uri = "/users/$([System.Web.HttpUtility]::UrlEncode($GuestUser.userPrincipalName))"
         # place the call
         $result = Start-RetryScriptBlock -ScriptBlock { Invoke-EasyGraphRequest -Resource "$($uri)" -Method "PATCH" -APIVersion "beta" -Body $body -ContentType "application/json" -ErrorAction Stop } -Retries 5 -SecondsDelay 5
