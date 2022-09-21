@@ -245,6 +245,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### [Released]
 
+#### [v4.3] - 2022-07-13
+
+##### Added
+
+* Nothing
+
+##### Changed
+
+* minor fixes after major release
+
+##### Removed
+
+* Nothing
+
+##### Credits
+
+#### [Released]
+
+#### [v4.2] - 2022-07-11
+
+##### Added
+
+* Nothing
+
+##### Changed
+
+* minor fixes after major release
+
+##### Removed
+
+* Nothing
+
+##### Credits
+
+#### [Released]
+
 #### [v4.1] - 2022-06-28
 
 ##### Added
@@ -259,7 +295,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Nothing
 
-### Credits
+##### Credits
 
 #### [Released]
 
@@ -283,7 +319,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * All references to the SharePointPnPPowerShellOnline module
 * All references to both the AzureADPreview PowerShell module and its cmdlets
 
-### Credits
+##### Credits
 
 #### [Released]
 
@@ -301,7 +337,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Nothing
 
-### Credits
+##### Credits
 
 None
 #### [Unreleased]
@@ -320,7 +356,7 @@ None
 
 * Some references to functions that are not available in this solution.
 
-### Credits
+##### Credits
 
 None
 
@@ -340,7 +376,7 @@ None
 
 * Nothing
 
-### Credits
+##### Credits
 
 None
 
@@ -358,6 +394,6 @@ None
 
 * Nothing
 
-### Credits
+##### Credits
 
 None
