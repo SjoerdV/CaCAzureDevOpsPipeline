@@ -54,20 +54,19 @@ function Start-RetryScriptBlock {
     $SecondsDelay = 5,
     $Retries = 1,
     [array]$ExcludeErrorMatches = @(),
-    $VerboseOutput = $true,
-    $Indent = ""
+    $VerboseOutput = $true
   )
 
   $currentRetry = 0
   $success = $false
-  $cmd = $ScriptBlock.ToString()
+  $cmd = $ExecutionContext.InvokeCommand.ExpandString($ScriptBlock)
 
   do {
     try {
       $result = . $ScriptBlock
       $success = $true
       if ($VerboseOutput -eq $true) {
-        $write = Write-Host "$($Indent)Successfully executed [$cmd]" -ForegroundColor "Green"
+        $write = Write-Host "Successfully executed [$cmd]" -ForeGroundColor "Green"
       }
 
       $Error.Clear()
@@ -85,22 +84,22 @@ function Start-RetryScriptBlock {
 
       if (!$errorexcluded) {
         if ($VerboseOutput -eq $true) {
-          $write = Write-Host "$($Indent)Failed to execute [$cmd]: $($_.ToString())" -ForegroundColor "Red"
+          $write = Write-Host "Failed to execute [$cmd]: $($_.ToString())" -ForegroundColor "Red"
         }
 
         if ($currentRetry -gt $Retries) {
           if ($global:stacktracemode) {
-            $write = Write-Host "$($Indent)Retry limit exceeded. Could not execute [$cmd]. The error: $($_.FullyQualifiedErrorId) || $($_.ScriptStackTrace) || $($_.Exception.ToString()) || $($_.ToString())" -ForegroundColor "Red"
+            $write = Write-Host "Retry limit exceeded. Could not execute [$cmd]. The error: $($_.FullyQualifiedErrorId) || $($_.ScriptStackTrace) || $($_.Exception.ToString()) || $($_.ToString())" -ForegroundColor "Red"
             throw "Retry limit exceeded. Could not execute [$cmd]. The error: $($_.FullyQualifiedErrorId) || $($_.ScriptStackTrace) || $($_.Exception.ToString()) || $($_.ToString())"
           }
           else {
-            $write = Write-Host "$($Indent)Retry limit exceeded. Could not execute [$cmd]. The error: $($_.ToString())" -ForegroundColor "Red"
+            $write = Write-Host "Retry limit exceeded. Could not execute [$cmd]. The error: $($_.ToString())" -ForegroundColor "Red"
             throw "Retry limit exceeded. Could not execute [$cmd]. The error: " + $_.ToString()
           }
         }
         else {
           if ($VerboseOutput -eq $true) {
-            $write = Write-Host "$($Indent)Waiting $SecondsDelay second(s) before attempt #$currentRetry of [$cmd]" -ForegroundColor "Yellow"
+            $write = Write-Host "Waiting $SecondsDelay second(s) before attempt #$currentRetry of [$cmd]" -ForegroundColor "Yellow"
           }
           Start-Sleep -s $SecondsDelay
         }
