@@ -3,7 +3,7 @@ title:  'Configuration as Code - Azure DevOps Pipeline for Microsoft 365 - Start
 author:
 - Sjoerd de Valk, SPdeValk Consultancy
 date: 2020-07-11T14:05:00+02:00
-last_modified_at: 2022-06-27T20:30:00+02:00
+last_modified_at: 2022-09-21T20:30:00+02:00
 keywords: [azure, devops, pipeline, yaml, microsoft365]
 abstract: |
   This document is about starting your own Configuration as Code repository for Microsoft 365 projects.
@@ -178,9 +178,9 @@ Now configure the Azure DevOps pipeline.
 Please note as we are just running existing PowerShell scripts later on, there is nothing to be compiled or processed. Of course the build artifact containing the contents of the repository is important as it will be tagged as a 'release'.
 
 1. Make sure both 'TEST' and 'RELEASE' variables in the 'M365-environment-variables' group are set to '0' (don't forget to save!)
-    | **TEST**    = | **0**  |
-    | ------------- | ------ |
-    | **RELEASE** = | **0**  |
+    | **TEST**    = | **0** |
+    | ------------- | ----- |
+    | **RELEASE** = | **0** |
 
 1. Make a small change to any file in the repository, commit and push the change.
 1. If everything is properly setup the pipeline should complete successfully.
@@ -189,9 +189,9 @@ Please note as we are just running existing PowerShell scripts later on, there i
 #### Test the TEST stage (deploy_TEST)
 
 1. Make sure the 'TEST' variable in the 'M365-environment-variables' group is set to '1' (don't forget to save!)
-    | **TEST**    = | **1**  |
-    | ------------- | ------ |
-    | **RELEASE** = | **0**  |
+    | **TEST**    = | **1** |
+    | ------------- | ----- |
+    | **RELEASE** = | **0** |
 1. Make a small change to any file in the repository, commit and push the change.
 1. If everything is properly setup there should be an 'Approval' waiting for the person(s) you have configured the TEST environment for.
 1. Finish the approval round
@@ -202,9 +202,9 @@ Please note as we are just running existing PowerShell scripts later on, there i
 #### Test the PROD stage (deploy_PROD)
 
 1. Make sure both the 'TEST' and 'RELEASE' variables in the 'M365-environment-variables' group are set to '1' (don't forget to save!)
-    | **TEST**    = | **1**  |
-    | ------------- | ------ |
-    | **RELEASE** = | **1**  |
+    | **TEST**    = | **1** |
+    | ------------- | ----- |
+    | **RELEASE** = | **1** |
 1. Make a small change to any file in the repository, commit and push the change.
 1. If everything is properly setup there should be an 'Approval' waiting for the person(s) you have configured the PROD environment for.
 1. Finish the approval round
